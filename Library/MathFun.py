@@ -6,7 +6,7 @@ import numpy as np
 
 
 def hadamard():
-    return tc.tensor([[1.0, 1.0], [1.0, -1.0]]) / math.sqrt(2)
+    return tc.tensor([[1.0, 1.0], [1.0, -1.0]]).to(dtype=tc.float64) / math.sqrt(2)
 
 
 def hosvd(x, dc=None, return_lms=False):
@@ -27,19 +27,55 @@ def hosvd(x, dc=None, return_lms=False):
         return core, u
 
 
+def kron(mats):
+    assert len(mats) >= 2
+    if type(mats[0]) is tc.Tensor:
+        mat = tc.kron(mats[0], mats[1])
+        for n in range(2, len(mats)):
+            mat = tc.kron(mat, mats[n])
+    else:
+        mat = np.kron(mats[0], mats[1])
+        for n in range(2, len(mats)):
+            mat = np.kron(mat, mats[n])
+    return mat
+
+
+def pauli_basis(which=None, device='cpu', if_list=False):
+    basis = {
+        'x': tc.tensor([[1.0, 1.0], [1.0, -1.0]], device=device) / np.sqrt(2),
+        'y': tc.tensor([[1.0, 1.0j], [1.0, -1.0j]], device=device) / np.sqrt(2),
+        'z': tc.eye(2, dtype=tc.float64, device=device)
+    }
+    if which is None:
+        if if_list:
+            return [basis['x'], basis['y'], basis['z']]
+        else:
+            return basis
+    else:
+        return basis[which]
+
+
 def pauli_operators(which=None, device='cpu', if_list=False):
     op = {
         'x': tc.tensor([[0.0, 1.0], [1.0, 0.0]], device=device, dtype=tc.float64),
         'y': tc.tensor([[0.0, -1.0j], [1.0j, 0.0]], device=device, dtype=tc.complex128),
         'z': tc.tensor([[1.0, 0.0], [0.0, -1.0]], device=device, dtype=tc.float64),
+        'id': tc.eye(2).to(device=device, dtype=tc.float64)
     }
     if which is None:
         if if_list:
-            return [op['x'], op['y'], op['z']]
+            return [op['id'], op['x'], op['y'], op['z']]
         else:
             return op
     else:
         return op[which]
+
+
+def phase_shift(theta):
+    return tc.tensor([
+        [1.0, 0.0],
+        [0.0, 1j*math.exp(theta)]
+    ]).to(dtype=tc.complex128)
 
 
 def rank1_product(vecs, c=1.0):
@@ -174,6 +210,58 @@ def rotate_pauli(theta, direction):
     return tc.matrix_exp(-1j * theta / 2 * op)
 
 
+def series_sin_cos(x, coeff_sin, coeff_cos, k_step=0.02):
+    y = tc.ones(x.numel(), device=x.device, dtype=x.dtype) * coeff_cos[0]
+    coeff_sin, coeff_cos = coeff_sin.to(device=x.device, dtype=x.dtype), coeff_cos.to(device=x.device, dtype=x.dtype)
+    for n in range(1, len(coeff_sin)):
+        y = y + tc.sin(x * coeff_sin[n] * n * k_step)
+    for n in range(1, len(coeff_cos)):
+        y = y + tc.cos(coeff_cos[n] * n * k_step)
+    return y
+
+
+def sign_accuracy(pred, labels):
+    pred = pred * labels
+    return tc.sum(pred > 0) / labels.numel()
+
+
+def spin_operators(spin, is_torch=True):
+    op = dict()
+    if spin.lower() == 'half':
+        op_ = pauli_operators()
+        op['id'] = tc.eye(2)
+        op['sx'] = op_['x'] / 2
+        op['sy'] = op_['y'] / 2
+        op['sz'] = op_['z'] / 2
+        op['su'] = tc.zeros((2, 2))
+        op['sd'] = tc.zeros((2, 2))
+        op['su'][0, 1] = 1
+        op['sd'][1, 0] = 1
+    elif spin.lower() in ['1', 'one']:
+        op['id'] = tc.eye(3)
+        op['sx'] = tc.zeros((3, 3))
+        op['sy'] = tc.zeros((3, 3), dtype=tc.complex128)
+        op['sz'] = tc.zeros((3, 3))
+        op['sx'][0, 1] = 1
+        op['sx'][1, 0] = 1
+        op['sx'][1, 2] = 1
+        op['sx'][2, 1] = 1
+        op['sy'][0, 1] = -1j
+        op['sy'][1, 0] = 1j
+        op['sy'][1, 2] = -1j
+        op['sy'][2, 1] = 1j
+        op['sz'][0, 0] = 1
+        op['sz'][2, 2] = -1
+        op['sx'] /= 2 ** 0.5
+        op['sy'] /= 2 ** 0.5
+        op['su'] = tc.real(op['sx'] + 1j * op['sy'])
+        op['sd'] = tc.real(op['sx'] - 1j * op['sy'])
+    if not is_torch:
+        for k in op:
+            op[k] = op[k].numpy()
+    return op
+
+
 def super_diagonal_tensor(dim, order):
     """
     :param dim: bond dimension
@@ -185,6 +273,11 @@ def super_diagonal_tensor(dim, order):
         x = (''.join([str(n), ','] * order))
         exec('delta[' + x[:-1] + '] = 1.0')
     return delta
+
+
+def swap():
+    return tc.eye(4).reshape(2, 2, 2, 2).permute(0, 2, 1, 3).to(dtype=tc.float64)
+    # return tc.einsum('ab,ij->aijb', tc.eye(2), tc.eye(2)).to(dtype=tc.float64)
 
 
 def ttd_np(x, chi=None):

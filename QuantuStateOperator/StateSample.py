@@ -4,6 +4,7 @@ from Library.MathFun import hadamard
 
 def qubit_state_sampling(state, num_sample=1000, counter=True):
     """
+    # 收录于Library.QuantumTool
     :param state: quantum state
     :param num_sample: number of samples
     :param counter: whether counter

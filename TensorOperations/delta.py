@@ -8,10 +8,11 @@ def super_diagonal_tensor(dim, order):
     :param order: tensor order
     :return: high-order super-orthogonal tensor
     """
-    delta = tc.zeros(dim ** order, dtype=tc.float64)
-    delta[0] = 1
-    delta[-1] = 1
-    return delta.reshape([dim] * order)
+    delta = tc.zeros([dim] * order, dtype=tc.float64)
+    for n in range(dim):
+        x = (''.join([str(n), ','] * order))
+        exec('delta[' + x[:-1] + '] = 1.0')
+    return delta
 
 
 U = tc.randn((2, 2), dtype=tc.float64)

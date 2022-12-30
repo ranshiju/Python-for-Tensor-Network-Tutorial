@@ -3,12 +3,14 @@ import torch as tc
 
 M1 = tc.randn((3, 2), dtype=tc.complex128)
 u, s, v = tc.linalg.svd(M1)
-print('The shapes of u, s, and v_dagger with full_matrices=True (default):')
+print('The shapes of u, s, and v_dagger with '
+      'full_matrices=True (default):')
 print(u.shape, s.shape, v.shape)
 
 M1 = tc.randn((3, 2), dtype=tc.complex128)
 u, s, v = tc.linalg.svd(M1, full_matrices=False)
-print('The shapes of u, s, and v_dagger with full_matrices=False:')
+print('The shapes of u, s, and v_dagger with '
+      'full_matrices=False:')
 print(u.shape, s.shape, v.shape)
 
 print('--------------------- 分割线 ---------------------')

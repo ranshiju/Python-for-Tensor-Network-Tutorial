@@ -82,6 +82,21 @@ def indexes_eq2einsum_eq(indexes):
     return eq
 
 
+def list_eq2einsum_eq(eq):
+    # 将list表示的equation转化为einsum函数的equation
+    # list中的数字不能超过25！！！
+    # 例如[[0, 1], [0, 2], [1, 2]] 转为 'ab,ac->bc'
+    # 例如[[0, 1], [0, 1], []] 转为 'ab,ab->'
+    length = len(eq)
+    eq_str = ''
+    for n in range(length-1):
+        tmp = [chr(m+97) for m in eq[n]]
+        eq_str = eq_str + ''.join(tmp) + ','
+    eq_str = eq_str[:-1] + '->'
+    tmp = [chr(m+97) for m in eq[-1]]
+    return eq_str + ''.join(tmp)
+
+
 def load(path_file, names=None, device='cpu'):
     if os.path.isfile(path_file):
         if names is None:

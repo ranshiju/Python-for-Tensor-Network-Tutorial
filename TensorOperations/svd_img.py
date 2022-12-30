@@ -6,11 +6,10 @@ import matplotlib.pyplot as plt
 M = cv2.imread('../data/images/img1.jpg')
 print('type(x) = ', type(M))
 print('X.shape = ', M.shape)
-print('For the greyscale images, the data in the three '
-      'channels are identical:')
-print('Part of channel-0: \n', M[5:10, 5:10, 0])
-print('Part of channel-1: \n', M[5:10, 5:10, 1])
-print('Part of channel-2: \n', M[5:10, 5:10, 2])
+print('对于灰度图，三个通道的取值相等:')
+print('通道0切片: \n', M[5:10, 5:10, 0])
+print('通道1切片: \n', M[5:10, 5:10, 1])
+print('通道2切片: \n', M[5:10, 5:10, 2])
 
 print('--------------------- 分割线 ---------------------')
 

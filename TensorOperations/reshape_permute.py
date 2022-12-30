@@ -19,7 +19,7 @@ print('x2 = ', x2)
 print('x2_ = ', x2_)
 
 print('--------------------- 分割线 ---------------------')
-T =tc.randn(2, 3, 4)
+T = tc.randn(2, 3, 4)
 print('张量T的形状为', T.shape)
 V = T.flatten()
 print('其向量化后(flatten)的形状为', V.shape)
