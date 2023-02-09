@@ -171,6 +171,13 @@ def print_progress_bar(n_current, n_total, message=''):
     time.sleep(0.01)
 
 
+def print_mat(mat):
+    if type(mat) is tc.Tensor:
+        mat = mat.numpy()
+    for x in mat:
+        print(list(x))
+
+
 def replace_value(x, value0, value_new):
     x_ = np.array(x)
     x_[x_ == value0] = value_new

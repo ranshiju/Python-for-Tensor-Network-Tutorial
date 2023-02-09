@@ -121,7 +121,7 @@ def rank1(x, v=None, it_time=2000, tol=1e-14):
         return rank1_tc(x, v, it_time, tol)
 
 
-def rank1_np(x, v=None, it_time=2000, tol=1e-14):
+def rank1_np(x, v=None, it_time=10000, tol=1e-14):
     # 初始化向量组v
     if v is None:
         v = list()
@@ -148,13 +148,13 @@ def rank1_np(x, v=None, it_time=2000, tol=1e-14):
             err_norm[n] = np.linalg.norm(norm - norm1)
             v[n] = v1
             norm1 = norm
-        if err.sum() / x.ndim < tol and err_norm.ndim < tol:
+        if err.sum()/x.ndim < tol and err_norm.sum()/x.ndim < tol:
             break
 
     return v, norm1
 
 
-def rank1_tc(x, v=None, it_time=2000, tol=1e-14):
+def rank1_tc(x, v=None, it_time=10000, tol=1e-14):
     # 初始化向量组v
     if v is None:
         v = list()
@@ -181,7 +181,7 @@ def rank1_tc(x, v=None, it_time=2000, tol=1e-14):
             err_norm[n] = (norm - norm1).norm()
             v[n] = v1
             norm1 = norm
-        if err.sum() / x.ndimension() < tol and err_norm.sum() < tol:
+        if err.sum()/x.ndimension() < tol and err_norm.sum()/x.ndimension() < tol:
             break
 
     return v, norm1
@@ -276,7 +276,7 @@ def super_diagonal_tensor(dim, order):
 
 
 def swap():
-    return tc.eye(4).reshape(2, 2, 2, 2).permute(0, 2, 1, 3).to(dtype=tc.float64)
+    return tc.eye(4).reshape(2, 2, 2, 2).permute(1, 0, 2, 3).to(dtype=tc.float64)
     # return tc.einsum('ab,ij->aijb', tc.eye(2), tc.eye(2)).to(dtype=tc.float64)
 
 

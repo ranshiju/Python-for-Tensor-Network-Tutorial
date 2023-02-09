@@ -1,7 +1,7 @@
 import torch as tc
 import Library.BasicFun as bf
 from numpy import ceil, log2
-from torch.nn import CrossEntropyLoss, MSELoss, NLLLoss
+from torch.nn import MSELoss, NLLLoss
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import Adam
 from Library.DataFun import feature_map, split_time_series
@@ -54,7 +54,7 @@ def ADQC_classifier(trainloader, testloader, num_classes,
             psi1 = qc(vecs)
             psi1 = probabilities_adqc_classifier(
                 psi1, num_qc, num_classes)
-            loss = criteria(psi1, lbs)
+            loss = criteria(tc.log(psi1), lbs)
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
@@ -74,7 +74,7 @@ def ADQC_classifier(trainloader, testloader, num_classes,
                     psi1 = qc(vecs)
                     psi1 = probabilities_adqc_classifier(
                         psi1, num_qc, num_classes)
-                    loss = criteria(psi1, lbs)
+                    loss = criteria(tc.log(psi1), lbs)
                     loss_tmp += loss.item() * samples.shape[0]
                     num_t += samples.shape[0]
                     num_c += (psi1.data.argmax(
@@ -208,7 +208,6 @@ def QRNN_predict_time_series(data, para=None):
     trainloader = DataLoader(TensorDataset(trainset, train_lbs), batch_size=para['batch_size'], shuffle=True)
     testloader = DataLoader(TensorDataset(testset, test_lbs), batch_size=para['batch_size'], shuffle=False)
 
-    # print(num_train, data.shape, trainset.shape, testset.shape)
     if para['lattice'] is None:
         pos = [[m, para['ancillary_length']] for m in range(para['ancillary_length']-1, -1, -1)]
         pos = pos * para['depth']

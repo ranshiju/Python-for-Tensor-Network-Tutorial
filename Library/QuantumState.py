@@ -2,6 +2,7 @@ import sys
 import random
 from collections import Counter
 import torch as tc
+import numpy as np
 import Library.BasicFun as bf
 import Library.MathFun as mf
 
@@ -13,7 +14,7 @@ def state_all_up(n_qubit, d):
 
 
 def state_ghz(n_qubit):
-    return mf.super_diagonal_tensor(2, n_qubit)
+    return mf.super_diagonal_tensor(2, n_qubit) / np.sqrt(2)
 
 
 class TensorPureState:

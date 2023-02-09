@@ -23,7 +23,7 @@ para_lstm = {'n_layer': 6,  # LSTM层数
 para_adqc = {'depth': 4}  # ADQC量子门层数
 # QRNN参数
 para_qrnn = {'depth': 4,  # 每个unit的ADQC量子门层数
-             'unitary': True,  # 是否要求幺正性
+             'ancillary_length': 4,  # 辅助量子比特个数
              'ini_way': 'identity'}  # 初始化为近似单位阵
 para_adqc = dict(para, **para_adqc)
 para_qrnn = dict(para, **para_qrnn)
@@ -33,6 +33,7 @@ print('随机生成一维序列')
 x = tc.arange(para['length_tot'])
 series = series_sin_cos(x, tc.randn(para['order']),
                         tc.randn(para['order']))
+
 plt.plot(series)
 plt.title('Time series to be learnt')
 plt.show()
@@ -46,19 +47,22 @@ ratio = series1.max() * 1.2
 series1 = series1 / ratio
 
 print('训练LSTM实现预测')
-_, results_lstm, para_lstm = LSTM_algo.LSTM_predict_time_series(series1,para_lstm)
+_, results_lstm, para_lstm = \
+    LSTM_algo.LSTM_predict_time_series(series1,para_lstm)
 output_lstm = tc.cat([results_lstm['train_pred'],
                       results_lstm['test_pred']], dim=0)
 output_lstm = output_lstm * ratio - shift
 
 print('训练ADQC实现预测')
-_, results_adqc, para_adqc = ADQC_algo.ADQC_predict_time_series(series1, para_adqc)
+_, results_adqc, para_adqc = \
+    ADQC_algo.ADQC_predict_time_series(series1, para_adqc)
 output_adqc = tc.cat([results_adqc['train_pred'],
                       results_adqc['test_pred']], dim=0)
 output_adqc = output_adqc * ratio - shift
 
 print('训练QRNN实现预测')
-_, results_qrnn, para_qrnn = ADQC_algo.QRNN_predict_time_series(series1, para_qrnn)
+_, results_qrnn, para_qrnn = \
+    ADQC_algo.QRNN_predict_time_series(series1, para_qrnn)
 output_qrnn = tc.cat([results_qrnn['train_pred'],
                       results_qrnn['test_pred']], dim=0)
 output_qrnn = output_qrnn * ratio - shift
@@ -79,7 +83,8 @@ l2, = plt.plot(x[para['length']:num_train],
 l3, = plt.plot(x[num_train:], output_lstm[num_train:],
                marker='o', color='b', markerfacecolor='none',
                markeredgewidth=0.4, linewidth=0)
-plt.legend([l1, l2, l3], ['ground truth', 'train set', 'test set'])
+plt.legend([l1, l2, l3],
+           ['ground truth', 'train set', 'test set'])
 
 plt.subplot(3, 1, 2)
 plt.title('ADQC')
@@ -91,7 +96,8 @@ l5, = plt.plot(x[para['length']:num_train],
 l6, = plt.plot(x[num_train:], output_adqc[num_train:],
                marker='o', color='b', markerfacecolor='none',
                markeredgewidth=0.4, linewidth=0)
-plt.legend([l4, l5, l6], ['ground truth', 'train set', 'test set'])
+plt.legend([l4, l5, l6],
+           ['ground truth', 'train set', 'test set'])
 
 plt.subplot(3, 1, 3)
 plt.title('QRNN')
@@ -103,11 +109,13 @@ l8, = plt.plot(x[para['length']:num_train],
 l9, = plt.plot(x[num_train:], output_qrnn[num_train:],
                marker='o', color='b', markerfacecolor='none',
                markeredgewidth=0.4, linewidth=0)
-plt.legend([l7, l8, l9], ['ground truth', 'train set', 'test set'])
+plt.legend([l7, l8, l9],
+           ['ground truth', 'train set', 'test set'])
 plt.show()
 
 plt.subplot(1, 1, 1)
-epochs = (np.arange(len(results_lstm['train_loss'])) + 1) * para_lstm['print_time']
+epochs = (np.arange(len(results_lstm['train_loss'])) + 1
+          ) * para_lstm['print_time']
 l10, = plt.plot(epochs, np.array(results_lstm['train_loss']),
                 linestyle='--', color='r')
 l11, = plt.plot(epochs, np.array(results_lstm['test_loss']), color='r')

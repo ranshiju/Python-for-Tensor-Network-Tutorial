@@ -297,7 +297,7 @@ def split_time_series(data, length, device=None, dtype=tc.float32):
         device=device, dtype=dtype), tc.tensor(targets).to(device=device, dtype=dtype)
 
 
-def split_dataset_train_test(samples, labels, ratio=0.2, shuffle=True):
+def split_dataset_train_test(samples, labels):
     num_c = tc.max(labels.flatten()) + 1
     train_samples, test_samples = list(), list()
     train_labels, test_labels = list(), list()

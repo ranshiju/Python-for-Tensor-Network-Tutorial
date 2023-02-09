@@ -47,6 +47,10 @@ class ADGate(nn.Module):
             self.tensor = mf.hadamard()
             self.tensor = self.tensor.to(device=self.device, dtype=self.dtype)
             self.variational = False
+        elif self.name in ['gate_no_variation']:
+            self.paras = paras
+            self.tensor = paras
+            self.variational = False
 # ==================== 以上是非参数门，以下是参数门 ====================
         elif self.name == 'rotate':
             if paras is None:
@@ -61,8 +65,6 @@ class ADGate(nn.Module):
             if paras is None:
                 self.paras = tc.randn((3, ))
             self.paras = self.paras.to(device=self.device, dtype=self.dtype)
-            if self.paras[1].abs() > 1e-12:
-                assert self.dtype in [tc.complex128, tc.complex64, tc.complex32]
         elif self.name == 'latent':
             if paras is None:
                 if self.pos is None:
@@ -112,10 +114,9 @@ class ADGate(nn.Module):
             if self.spin_op is None:
                 self.spin_op = mf.spin_operators('half')
                 for x in self.spin_op:
-                    self.spin_op[x] = self.spin_op[x].to(device=self.device, dtype=self.dtype)
+                    self.spin_op[x] = self.spin_op[x].to(device=self.device)
             h = self.paras[0] * self.spin_op['sx'] + self.paras[1] * self.spin_op['sy'] + \
                 self.paras[2] * self.spin_op['sz']
-            h = h.to(device=self.device, dtype=self.dtype)
             self.tensor = tc.matrix_exp(-1j * self.settings['tau'] * h)
         elif self.name == 'latent':
             self.tensor = self.latent2unitary(self.paras)
@@ -170,7 +171,6 @@ class ADQC_basic(nn.Module):
         states1 = states1.permute(perm + [n_qubit]).reshape(2 ** m_p, -1, 2 ** m_c, shape[0])
         state1_ = states1[:, :, :-1, :]
         state2_ = tc.einsum('ab,bcn->acn', self.layers[n].tensor.reshape(-1, 2 ** m_p), states1[:, :, -1, :])
-        # state2_ = self.layers[n].tensor.reshape(-1, 2 ** m_p).mm(states1[:, :, -1, :])
         s_ = state2_.shape
         state2_ = state2_.reshape(s_[0], s_[1], 1, s_[2])
         states1 = tc.cat([state1_, state2_], dim=2)
@@ -269,9 +269,9 @@ class ADQC_LatentGates(ADQC_basic):
 
 class QRNN_LatentGates(ADQC_basic):
 
-    def __init__(self, pos_one_layer=None, lattice='brick', ini_way='random',
-                 num_ancillary=6, depth=3, unitary=True, device=None,
-                 dtype=tc.complex128):
+    def __init__(self, pos_one_layer=None, lattice='brick',
+                 ini_way='random', num_ancillary=6, depth=3,
+                 unitary=True, device=None, dtype=tc.complex128):
         super(QRNN_LatentGates, self).__init__(
             device=device, dtype=dtype)
         self.lattice = lattice
@@ -280,7 +280,8 @@ class QRNN_LatentGates(ADQC_basic):
         self.ini_way = ini_way
         self.unitary = unitary
         if pos_one_layer is None:
-            self.pos = position_one_layer(self.lattice, self.num_a+1)
+            self.pos = position_one_layer(
+                self.lattice, self.num_a+1)
         else:
             self.pos = pos_one_layer
 
@@ -288,41 +289,84 @@ class QRNN_LatentGates(ADQC_basic):
         for nd in range(depth):
             for ng in range(len(self.pos)):
                 if self.ini_way == 'identity':
-                    paras = tc.randn((4, 4)) * 1e-5 + tc.eye(4, 4)
-                    paras = paras.to(device=self.device, dtype=self.dtype)
+                    paras = tc.randn((
+                        4, 4)) * 1e-5 + tc.eye(4, 4)
+                    paras = paras.to(
+                        device=self.device, dtype=self.dtype)
                 name = 'layer' + str(nd) + '_gate' + str(ng)
                 if self.unitary:
                     gate = ADGate(
                         'latent', pos=self.pos[ng], paras=paras,
                         device=self.device, dtype=self.dtype)
                 else:
-                    gate = ADGate(
-                        'arbitrary', pos=self.pos[ng], paras=paras,
-                        device=self.device, dtype=self.dtype)
+                    gate = ADGate('arbitrary', pos=self.pos[ng],
+                                  paras=paras, device=self.device,
+                                  dtype=self.dtype)
                 self.layers.add_module(name, gate)
 
     def forward(self, vecs, psi=None, eps=1e-12):
         # vecs的形状为(样本数，向量维数，向量个数)
         if psi is None:
-            psi = tc.zeros(2 ** self.num_a, device=self.device, dtype=self.dtype)
+            psi = tc.zeros(2 ** self.num_a,
+                           device=self.device, dtype=self.dtype)
             psi[0] = 1.0
             psi = psi.repeat(vecs.shape[0], 1)
         self.renew_gates()
         norm = None
-        # psi1 = psi * 1.0
         for n in range(vecs.shape[2]):
-            # psi = psi + psi1
-            # norm = tc.einsum('na,na->n', psi, psi.conj())
-            # psi = tc.einsum('na,n->na', psi, 1 / (tc.sqrt(norm + eps)))
             psi = tc.einsum('na,nb->nab', psi, vecs[:, :, n])
-            psi = psi.reshape([psi.shape[0]] + [2] * self.num_a + [vecs.shape[1]])
+            psi = psi.reshape([psi.shape[0]] + [2] * self.num_a
+                              + [vecs.shape[1]])
             for m in range(len(self.layers)):
                 psi = self.act_nth_gate_multi_states(psi, m)
-            psi = psi.reshape(-1, vecs.shape[1])[:, 0].reshape(vecs.shape[0], -1)
+            psi = psi.reshape(-1, vecs.shape[1])[:, 0].reshape(
+                vecs.shape[0], -1)
             norm = tc.einsum('na,na->n', psi, psi.conj())
-            psi = tc.einsum('na,n->na', psi, 1/(tc.sqrt(norm+eps)))
-            # psi1 = psi * 1.0
+            psi = tc.einsum('na,n->na',
+                            psi, 1/(tc.sqrt(norm+eps)))
         return norm
+
+
+class ADQC_time_evolution_chain(ADQC_basic):
+
+    def __init__(self, hamilt, length, tau, num_slice, boundary_cond='open',
+                 fields=None, device=None, dtype=tc.float64):
+        super(ADQC_time_evolution_chain, self).__init__(
+            device=device, dtype=dtype)
+        # fields: None or (num_slice * length * 3)
+        self.tau = tau
+        self.pos = position_one_layer('brick', length)
+        self.length = length
+        if fields is not None:
+            num_slice = fields.shape[0]
+        if boundary_cond.lower() in ['pbc', 'periodic']:
+            self.pos.append([0, length-1])
+
+        u = tc.matrix_exp(-1j * tau * hamilt)
+        for k in range(num_slice):
+            for n in range(len(self.pos)):
+                gate_u = ADGate('gate_no_variation', paras=u, pos=self.pos[n],
+                                device=self.device, dtype=self.dtype)
+                self.layers.add_module('u'+str(k)+'_'+str(n), gate_u)
+            for n in range(length):
+                if fields is None:
+                    paras = None
+                else:
+                    paras = fields[k, n, :]
+                gate_h = ADGate('evolve_variational_mag', pos=n, paras=paras,
+                                settings={'tau': tau}, device=self.device,
+                                dtype=self.dtype)
+                self.layers.add_module('h' + str(k) + '_' + str(n), gate_h)
+
+    def cat_fields(self):
+        fields = list()
+        for g in self.layers:
+            fields_k = list()
+            if g.name[0] == 'h':
+                fields_k.append(g.tensor.data.reshape(-1, 1))
+            if g.name[-1] == str(self.length - 1):
+                fields.append(tc.cat(fields_k, dim=1).reshape(-1, self.length, 1))
+        return tc.cat(fields, dim=-1)
 
 
 def act_single_ADgate(state, gate):

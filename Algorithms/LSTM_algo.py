@@ -8,13 +8,11 @@ from Library.DataFun import split_time_series
 class RNN(nn.Module):
     def __init__(self, in_dim, hidden_dim, n_layer):
         super(RNN, self).__init__()
-        # self.n_layer = n_layer
-        # self.hidden_dim = hidden_dim
         self.lstm = nn.LSTM(in_dim, hidden_dim, n_layer, batch_first=True)
         self.fc = nn.Linear(hidden_dim, 1)
 
     def forward(self, x):
-        out, _ = self.lstm(x)
+        out, (h, c) = self.lstm(x)
         out = out[:, -1, :]
         out = self.fc(out)
         return out.squeeze()
