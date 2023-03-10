@@ -31,7 +31,8 @@ def heisenberg_hamilt_on_psi(psi, h):
     return psi1.flatten()
 
 
-linear_fun = LinearOperator((16, 16), lambda x: heisenberg_hamilt_on_psi(
+linear_fun = LinearOperator(
+    (16, 16), lambda x: heisenberg_hamilt_on_psi(
     x, hamilt.reshape(2, 2, 2, 2)))
 ge2, gs2 = eigsh(linear_fun, k=1, which='SA')
 print('- 匿名函数 + LinearOperator, \t 基态能量 = %g ' % ge2[0])

@@ -1,8 +1,8 @@
 import os
-
 import cv2
 import numpy as np
 import torch as tc
+from torch.utils.data import TensorDataset, DataLoader
 from Library.BasicFun import choose_device, combine_dicts
 
 
@@ -26,11 +26,22 @@ def choose_classes(data, labels, classes):
         classes = [classes]
     for n in range(len(classes)):
         data_.append(data[labels == classes[n]])
-        labels_.append(tc.ones((data_[-1].shape[0],), dtype=tc.int64) * n)
+        labels_.append(tc.ones((
+            data_[-1].shape[0],), device=labels.device, dtype=labels.dtype) * n)
     data_ = tc.cat(data_, dim=0)
     labels_ = tc.cat(labels_, dim=0)
     shape[0] = labels_.numel()
     return data_.reshape(shape), labels_
+
+
+def choose_classes_dataset(dataset, classes, re_tensor=False):
+    train_dataset = DataLoader(dataset, batch_size=dataset.data.shape[0], shuffle=False)
+    train_samples, train_lbs = next(iter(train_dataset))
+    train_samples, train_lbs = choose_classes(train_samples, train_lbs, classes)
+    if re_tensor:
+        return train_samples, train_lbs
+    else:
+        return TensorDataset(train_samples, train_lbs)
 
 
 def feature_map(samples, which='cossin', para=None, norm_p=2):
@@ -176,12 +187,14 @@ def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
         preprocess.append(transforms.CenterCrop(size=process['crop']))
     if 'resize' in process:
         preprocess.append(transforms.Resize(size=process['resize']))
+
     data_tf = transforms.Compose(preprocess)
     if dataset_path is None:
         paths = ['./Datasets', '../Datasets', '../../Datasets', '../../../Datasets', '../../../../Datasets']
         for x in paths:
             if os.path.isdir(x):
                 dataset_path = x
+                break
     if dataset_path is None:
         dataset_path = './Datasets'
     test_dataset = None
@@ -195,13 +208,18 @@ def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
             root=dataset_path, train=True, transform=data_tf, download=True)
         if test:
             test_dataset = datasets.FashionMNIST(root=dataset_path, train=False, transform=data_tf)
+
+    if 'classes' in process:
+        train_dataset = choose_classes_dataset(train_dataset, process['classes'])
+        if test:
+            test_dataset = choose_classes_dataset(test_dataset, process['classes'])
     return train_dataset, test_dataset
 
 
 def make_dataloader(dataset, batch_size=None, shuffle=False):
     from torch.utils.data import DataLoader
     if batch_size is None:
-        batch_size = dataset.data_adqc.shape[0]
+        batch_size = dataset.data.shape[0]
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
@@ -259,24 +277,24 @@ def rescale_max_min_feature_wise(samples, maximum=1, minimum=0):
     return samples_.reshape(s)
 
 
-def select_samples_classes(samples, labels, classes, ndims=4, rearrange_labels=True):
-    samples_list = list()
-    labels_list = list()
-    if type(classes) is int:
-        classes = list(range(classes))
-    for n, x in enumerate(classes):
-        which = (labels == x)
-        samples_list.append(samples[which])
-        if rearrange_labels:
-            labels_list.append(tc.ones(samples_list[-1].shape[0], ) * n)
-        else:
-            labels_list.append(labels[labels == x])
-    samples_ = tc.cat(samples_list, dim=0)
-    labels_ = tc.cat(labels_list, dim=0)
-    if samples_.ndimension() == 3:
-        if ndims == 4:
-            samples_ = samples_.reshape((-1, 1) + samples_.shape[1:])
-    return samples_, labels_
+# def select_samples_classes(samples, labels, classes, ndims=4, rearrange_labels=True):
+#     samples_list = list()
+#     labels_list = list()
+#     if type(classes) is int:
+#         classes = list(range(classes))
+#     for n, x in enumerate(classes):
+#         which = (labels == x)
+#         samples_list.append(samples[which])
+#         if rearrange_labels:
+#             labels_list.append(tc.ones(samples_list[-1].shape[0], ) * n)
+#         else:
+#             labels_list.append(labels[labels == x])
+#     samples_ = tc.cat(samples_list, dim=0)
+#     labels_ = tc.cat(labels_list, dim=0)
+#     if samples_.ndimension() == 3:
+#         if ndims == 4:
+#             samples_ = samples_.reshape((-1, 1) + samples_.shape[1:])
+#     return samples_, labels_
 
 
 def split_time_series(data, length, device=None, dtype=tc.float32):

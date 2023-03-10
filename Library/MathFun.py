@@ -5,6 +5,14 @@ import torch as tc
 import numpy as np
 
 
+def entanglement_entropy(lm, eps=1e-15):
+    lm1 = lm ** 2 + eps
+    if type(lm1) is tc.Tensor:
+        return tc.dot(-1 * lm1, tc.log(lm1))
+    else:
+        return np.inner(-1 * lm1, np.log(lm1))
+
+
 def hadamard():
     return tc.tensor([[1.0, 1.0], [1.0, -1.0]]).to(dtype=tc.float64) / math.sqrt(2)
 
@@ -280,7 +288,7 @@ def swap():
     # return tc.einsum('ab,ij->aijb', tc.eye(2), tc.eye(2)).to(dtype=tc.float64)
 
 
-def ttd_np(x, chi=None):
+def ttd_np(x, chi=-1, svd=True):
     """
     :param x: tensor to be decomposed
     :param chi: dimension cut-off. Use QR decomposition when chi=None;
@@ -293,8 +301,10 @@ def ttd_np(x, chi=None):
     dimL = 1
     tensors = list()
     lm = list()
+    if chi is None:
+        chi = -1
     for n in range(ndim-1):
-        if chi is None:  # No truncation
+        if (chi < 0) and (not svd):  # No truncation
             q, x = np.linalg.qr(x.reshape(dimL*dims[n], -1))
             dimL1 = x.shape[0]
         else:
@@ -315,11 +325,12 @@ def ttd_np(x, chi=None):
     return tensors, lm
 
 
-def ttd_tc(x, chi=None):
+def ttd_tc(x, chi=-1, svd=True):
     """
     :param x: tensor to be decomposed
     :param chi: dimension cut-off. Use QR decomposition when chi=None;
                 use SVD but don'tc truncate when chi=-1
+    :param svd: use svd or qr
     :return tensors: tensors in the TT form
     :return lm: singular values in each decomposition (calculated when chi is not None)
     """
@@ -328,8 +339,10 @@ def ttd_tc(x, chi=None):
     dimL = 1
     tensors = list()
     lm = list()
+    if chi is None:
+        chi = -1
     for n in range(ndim-1):
-        if chi is None:  # No truncation
+        if (chi < 0) and (not svd):  # No truncation
             q, x = tc.linalg.qr(x.reshape(dimL*dims[n], -1))
             dimL1 = x.shape[0]
         else:
@@ -341,7 +354,7 @@ def ttd_tc(x, chi=None):
             q = q[:, :dc]
             s = s[:dc]
             lm.append(s)
-            x = tc.diag(s).dot(v[:dc, :])
+            x = tc.diag(s).mm(v[:dc, :])
             dimL1 = dc
         tensors.append(q.reshape(dimL, dims[n], dimL1))
         dimL = dimL1
@@ -350,7 +363,7 @@ def ttd_tc(x, chi=None):
     return tensors, lm
 
 
-def ttd(x, chi):
+def ttd(x, chi=None):
     """
     :param x: tensor to be decomposed
     :param chi: dimension cut-off. Use QR decomposition when chi=None;

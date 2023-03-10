@@ -11,10 +11,11 @@ from Library.ED import ED_ground_state
 print('设置必要参数')
 num_qubits = 6  # 自旋个数
 tau = 0.02  # Trotter切片宽度
-num_slice = 20  # 切片次数
+num_slice = 50  # 切片次数
 J_target = [1, 1, 1]  # 制备该哈密顿量（海森堡模型）基态
 J_evolve = [1, 1, 0]  # 时间演化海森堡模型耦合常数（取XY部分）
-lr, it_time = 1e-2, 2000  # 初始学习率与迭代总次数
+h_directions = 'xz'  # 磁场方向限制为x与z方向，y方向磁场为0
+lr, it_time = 1e-1, 600  # 初始学习率与迭代总次数
 device = choose_device()
 
 print('获得目标态：海森堡模型基态')
@@ -31,7 +32,8 @@ hamilt = heisenberg(J_evolve[0], J_evolve[1], J_evolve[2])
 print('建立ADQC_time_evolution_chain实例')
 qc = ADQC.ADQC_time_evolution_chain(
     hamilt=hamilt, length=num_qubits,
-    tau=tau, num_slice=num_slice)
+    h_directions=h_directions,
+    tau=tau, num_slice=num_slice, device=device)
 
 optimizer = Adam(qc.parameters(), lr=lr)  # 建立优化器
 loss_rec = tc.zeros(it_time, )
@@ -56,7 +58,16 @@ plt.ylabel('loss')
 plt.show()
 
 fields_optimal = qc.cat_fields()
-plt.imshow(fields_optimal.cpu().numpy())
+fig = plt.subplot(2, 1, 1)
+plt.title('hx')
+plt.imshow(fields_optimal[0].cpu().numpy())
+plt.colorbar()
+plt.subplot(2, 1, 2)
+plt.title('hz')
+plt.imshow(fields_optimal[1].cpu().numpy())
+plt.colorbar()
 plt.show()
+
+
 
 

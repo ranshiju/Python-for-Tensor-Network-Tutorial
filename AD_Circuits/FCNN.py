@@ -5,7 +5,7 @@ from Library import DataFun as df
 from Library.BasicFun import choose_device
 
 
-dim = 200  # 隐藏层维数
+dim = 100  # 隐藏层维数
 it_time = 2000  # 迭代总次数
 batch_size = 300  # batch尺寸
 lr = 1e-4  # 学习率
@@ -50,7 +50,7 @@ for t in range(it_time):
         optimizer.step()
         optimizer.zero_grad()
         loss_rec += loss.item()
-        _, predicted = y.max(1)
+        predicted = y.argmax(dim=1)
         total += lb.shape[0]
         num_c += predicted.eq(lb).sum().item()
         if (nb % 20 == 0) or (nb == len(train_dataset)-1):
@@ -66,7 +66,7 @@ for t in range(it_time):
             yt = net(imgt.to(device=device))
             loss = criterion(yt, lbt)
             test_loss += loss.item()
-            _, predicted = yt.max(1)
+            predicted = yt.argmax(dim=1)
             total += lbt.shape[0]
             num_c += predicted.eq(lbt).sum().item()
         print('loss: %g, acc: %g%% '

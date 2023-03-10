@@ -5,7 +5,8 @@ from torch import nn
 
 from Library import MathFun as mf
 from Library import BasicFun as bf
-from Library.QuantumState import state_all_up
+from Library.DataFun import feature_map
+from Library.QuantumTools import vecs2product_state
 
 
 class ADGate(nn.Module):
@@ -60,11 +61,12 @@ class ADGate(nn.Module):
             if paras is None:
                 self.paras = tc.randn(1)
             self.paras = self.paras.to(device=self.device)
-        elif self.name == 'evolve_variational_mag':  # 单体磁场演化, shape=(3, )
+        elif self.name == 'evolve_variational_mag':  # 单体磁场演化, shape=(2, )
             assert 'tau' in self.settings
+            assert 'h_directions' in self.settings
             if paras is None:
-                self.paras = tc.randn((3, ))
-            self.paras = self.paras.to(device=self.device, dtype=self.dtype)
+                self.paras = tc.randn((len(self.settings['h_directions']), ))
+            self.paras = self.paras.to(device=self.device, dtype=tc.float64)
         elif self.name == 'latent':
             if paras is None:
                 if self.pos is None:
@@ -97,6 +99,9 @@ class ADGate(nn.Module):
             self.pos_control = list()
         if self.settings is None:
             self.settings = dict()
+        if 'h_directions' in self.settings:
+            if self.settings['h_directions'] is None:
+                self.settings['h_directions'] = 'xyz'
         if type(self.pos) is int:
             self.pos = [self.pos]
         if type(self.pos_control) is int:
@@ -113,10 +118,10 @@ class ADGate(nn.Module):
         elif self.name == 'evolve_variational_mag':
             if self.spin_op is None:
                 self.spin_op = mf.spin_operators('half')
-                for x in self.spin_op:
-                    self.spin_op[x] = self.spin_op[x].to(device=self.device)
-            h = self.paras[0] * self.spin_op['sx'] + self.paras[1] * self.spin_op['sy'] + \
-                self.paras[2] * self.spin_op['sz']
+            h = 0.0
+            for n in range(len(self.settings['h_directions'])):
+                h = h + self.paras[n] * self.spin_op['s'+self.settings[
+                    'h_directions'][n]].to(device=self.device)
             self.tensor = tc.matrix_exp(-1j * self.settings['tau'] * h)
         elif self.name == 'latent':
             self.tensor = self.latent2unitary(self.paras)
@@ -329,11 +334,13 @@ class QRNN_LatentGates(ADQC_basic):
 
 class ADQC_time_evolution_chain(ADQC_basic):
 
-    def __init__(self, hamilt, length, tau, num_slice, boundary_cond='open',
-                 fields=None, device=None, dtype=tc.float64):
+    def __init__(self, hamilt, length, tau,
+                 num_slice, boundary_cond='open',
+                 fields=None, h_directions=None,
+                 device=None, dtype=tc.float64):
         super(ADQC_time_evolution_chain, self).__init__(
             device=device, dtype=dtype)
-        # fields: None or (num_slice * length * 3)
+        # fields: None or (num_slice * length * len(directions))
         self.tau = tau
         self.pos = position_one_layer('brick', length)
         self.length = length
@@ -342,31 +349,94 @@ class ADQC_time_evolution_chain(ADQC_basic):
         if boundary_cond.lower() in ['pbc', 'periodic']:
             self.pos.append([0, length-1])
 
-        u = tc.matrix_exp(-1j * tau * hamilt)
+        u = tc.matrix_exp(-1j * tau * hamilt).to(
+            device=self.device)
         for k in range(num_slice):
             for n in range(len(self.pos)):
-                gate_u = ADGate('gate_no_variation', paras=u, pos=self.pos[n],
-                                device=self.device, dtype=self.dtype)
-                self.layers.add_module('u'+str(k)+'_'+str(n), gate_u)
+                gate_u = ADGate(
+                    'gate_no_variation',
+                    paras=u, pos=self.pos[n],
+                    device=self.device, dtype=self.dtype)
+                self.layers.add_module(
+                    'u'+str(k)+'_'+str(n), gate_u)
             for n in range(length):
                 if fields is None:
                     paras = None
                 else:
                     paras = fields[k, n, :]
-                gate_h = ADGate('evolve_variational_mag', pos=n, paras=paras,
-                                settings={'tau': tau}, device=self.device,
-                                dtype=self.dtype)
-                self.layers.add_module('h' + str(k) + '_' + str(n), gate_h)
+                gate_h = ADGate(
+                    'evolve_variational_mag',
+                    pos=n, paras=paras, settings={
+                        'tau': tau, 'h_directions': h_directions},
+                    device=self.device, dtype=self.dtype)
+                self.layers.add_module(
+                    'h' + str(k) + '_' + str(n), gate_h)
 
     def cat_fields(self):
-        fields = list()
-        for g in self.layers:
-            fields_k = list()
-            if g.name[0] == 'h':
-                fields_k.append(g.tensor.data.reshape(-1, 1))
-            if g.name[-1] == str(self.length - 1):
+        fields, fields_k = list(), list()
+        for index, (name, g) in enumerate(self.layers.named_children()):
+            if name[0] == 'h':
+                fields_k.append(g.paras.data.reshape(-1, 1))
+            if name[-1] == str(self.length - 1):
                 fields.append(tc.cat(fields_k, dim=1).reshape(-1, self.length, 1))
+                fields_k = list()
         return tc.cat(fields, dim=-1)
+
+
+
+class FCNN_ADQC_latent(ADQC_basic):
+
+    def __init__(self, pos_one_layer, dim_in, dim_mid,
+                 dim_out, NN_depth, adqc_depth,
+                 device=None, dtype=tc.float32):
+        super(FCNN_ADQC_latent, self).__init__(
+            device=device, dtype=dtype)
+
+        self.nn_layers = nn.Sequential()
+        if NN_depth == 1:
+            self.nn_layers.add_module(
+                'nn_' + str(0),
+                nn.Linear(dim_in, dim_out,
+                          dtype=self.dtype, device=self.device))
+            self.nn_layers.add_module(
+                'a_' + str(0), nn.Tanh())
+        else:
+            self.nn_layers.add_module(
+                'nn_' + str(0),
+                nn.Linear(dim_in, dim_mid,
+                          dtype=self.dtype, device=self.device))
+            self.nn_layers.add_module(
+                'a_' + str(0), nn.ReLU())
+            for nd in range(1, NN_depth-2):
+                self.nn_layers.add_module(
+                    'nn_'+str(nd),
+                    nn.Linear(
+                        dim_mid, dim_mid,
+                        dtype=self.dtype, device=self.device))
+                self.nn_layers.add_module(
+                    'a_'+str(nd), nn.ReLU())
+            self.nn_layers.add_module(
+                'nn_' + str(NN_depth-1),
+                nn.Linear(dim_mid, dim_out,
+                          dtype=self.dtype, device=self.device))
+            self.nn_layers.add_module(
+                'a_' + str(NN_depth-1), nn.Tanh())
+
+        for nd in range(adqc_depth):
+            for ng in range(len(pos_one_layer)):
+                name = 'adqc' + str(nd) + '_' + str(ng)
+                gate = ADGate('latent', pos=pos_one_layer[ng],
+                              device=self.device, dtype=self.dtype)
+                self.layers.add_module(name, gate)
+
+    def forward(self, x):
+        x1 = self.nn_layers(x.reshape(x.shape[0], -1))
+        vecs = feature_map(x1, which='normalized_linear')
+        vecs = vecs2product_state(vecs)
+        self.renew_gates()
+        for n in range(len(self.layers)):
+            vecs = self.act_nth_gate_multi_states(vecs, n)
+        return vecs
 
 
 def act_single_ADgate(state, gate):

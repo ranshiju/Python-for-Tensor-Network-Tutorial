@@ -13,7 +13,7 @@ psi_target = tc.randn((2**num_qubits, ), dtype=tc.complex128)
 psi_target /= psi_target.norm()
 
 print('初始化变分参数并建立优化器')
-paras = tc.randn((num_qubits*3, 4), dtype=tc.float64,
+paras = tc.randn((num_qubits*2, 4), dtype=tc.float64,
                  requires_grad=True)
 optimizer = Adam([paras], lr=lr)
 
@@ -24,10 +24,10 @@ loss_rec = tc.zeros(it_time, )
 print('开始优化')
 for t in range(it_time):
     gates = list()
-    for n in range(3*num_qubits):  # 将变分参数传输给旋转门
+    for n in range(2*num_qubits):  # 将变分参数传输给旋转门
         gates.append(mf.rotate(paras[n, :]))
     # 建立初态|000>
-    psi = qs.state_all_up(n_qubit=3, d=2)
+    psi = qs.state_all_up(n_qubit=num_qubits, d=2)
     psi = qs.TensorPureState(psi)
     # 作用各个量子门
     psi.act_single_gate(gates[0], [0])
@@ -47,7 +47,7 @@ for t in range(it_time):
     optimizer.zero_grad()
     loss_rec[t] = loss.item()
     if t % 20 == 19:
-        print('第%d次迭代，loss = %g' % (t, loss.item()))
+        print('第%d次迭代后，loss = %g' % (t+1, loss.item()))
 
 plt.plot(loss_rec)
 plt.xlabel('iteration time')
