@@ -1,5 +1,6 @@
 import os
 import cv2
+import math
 import numpy as np
 import torch as tc
 from torch.utils.data import TensorDataset, DataLoader
@@ -51,15 +52,26 @@ def feature_map(samples, which='cossin', para=None, norm_p=2):
     if para is None:
         para = dict()
     para_ = {
-        'd': 2,
-        'theta': 1,
-        'alpha': 2
+        'd': 2,  # 特征维数
+        'theta': 1,  # cos-sin角度
+        'alpha': 2,  # 高斯分布标准差
+        'order0': 0  # 展开第0项为几阶
     }
     para = combine_dicts(para_, para)
     samples = samples.reshape(-1, 1, samples[0].numel())
+    if which == '1x':
+        which = 'power'
+        para['d'] = 2
+    if (which == 'power') and (para['order0'] == 1) and (para['d'] == 1):
+        which = 'reshape'
+
     if which in ['cossin', 'cos-sin', 'cos_sin']:
-        img1 = tc.cat([tc.cos(samples * para['theta'] * np.pi / 2),
-                       tc.sin(samples * para['theta'] * np.pi / 2)], dim=1)
+        img1 = list()
+        for dd in range(1, para['d']+1):
+            img1.append(math.sqrt(math.comb(para['d']-1, dd-1)) * tc.cos(
+                samples * para['theta'] * np.pi / 2) ** (para['d'] - dd) * tc.sin(
+                samples * para['theta'] * np.pi / 2) ** (dd - 1))
+        img1 = tc.cat(img1, dim=1)
         if norm_p == 1:
             img1 = img1 ** 2
         return img1
@@ -79,6 +91,19 @@ def feature_map(samples, which='cossin', para=None, norm_p=2):
         return img1
     elif which in ['one-hot', 'one_hot', 'onehot']:
         return feature_map_one_hot(samples, d=para['d'])
+    elif which == 'power':
+        if para['order0'] == 0:
+            img_list = [tc.ones(
+                samples.shape, device=samples.device, dtype=samples.dtype)]
+            order0, order1 = 1, para['d']
+        else:
+            img_list = list()
+            order0, order1 = para['order0'], para['order0']+para['d']
+        for dd in range(order0, order1):
+            img_list.append(samples ** dd)
+        return tc.cat(img_list, dim=1)
+    elif which == 'reshape':
+        return samples.reshape(samples.shape[0], 1, -1)
     else:
         print('Error: ' + which + ' is not a valid feature map')
 
@@ -187,6 +212,9 @@ def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
         preprocess.append(transforms.CenterCrop(size=process['crop']))
     if 'resize' in process:
         preprocess.append(transforms.Resize(size=process['resize']))
+    if 'normalize' in process:
+        preprocess.append(transforms.Normalize(
+            mean=process['normalize'][0], std=process['normalize'][1]))
 
     data_tf = transforms.Compose(preprocess)
     if dataset_path is None:

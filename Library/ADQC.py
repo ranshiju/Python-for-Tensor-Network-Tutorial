@@ -431,7 +431,7 @@ class FCNN_ADQC_latent(ADQC_basic):
 
     def forward(self, x):
         x1 = self.nn_layers(x.reshape(x.shape[0], -1))
-        vecs = feature_map(x1, which='normalized_linear')
+        vecs = feature_map(x1, which='cos-sin')
         vecs = vecs2product_state(vecs)
         self.renew_gates()
         for n in range(len(self.layers)):

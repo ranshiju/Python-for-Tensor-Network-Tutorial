@@ -2,14 +2,12 @@ import Library.MathFun as mf
 import torch as tc
 import numpy as np
 import Library.BasicFun as bf
+import math
 
 
-x = tc.randn(4, 4, dtype=tc.float64)
-print(x)
-print(x.to(dtype=tc.complex128))
-
-
-
+a = {'a': 1, 'b': 3}
+b = {'a': 6, 'c': 2}
+print(dict(a, **b))
 
 
 

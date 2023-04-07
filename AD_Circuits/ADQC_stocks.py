@@ -31,6 +31,9 @@ para_lstm = dict(deepcopy(para), **para_lstm)
 
 series = load('../data/stocks/000001.SZ.data', names='close')
 
+plt.plot(tc.arange(series.numel()), series)
+plt.show()
+
 print('预处理数据')
 shift = -series.min() + 0.1 * series.min().abs()
 close_diff = series + shift

@@ -63,15 +63,16 @@ def find_indexes_value_in_list(x, value):
 
 def fprint(content, file=None, print_screen=True, append=True):
     if file is None:
-        file = './record.log'
-    if append:
-        way = 'ab'
-    else:
-        way = 'wb'
-    with open(file, way, buffering=0) as log:
-        log.write((content + '\n').encode(encoding='utf-8'))
-    if print_screen:
         print(content)
+    else:
+        if append:
+            way = 'ab'
+        else:
+            way = 'wb'
+        with open(file, way, buffering=0) as log:
+            log.write((content + '\n').encode(encoding='utf-8'))
+        if print_screen:
+            print(content)
 
 
 def indexes_eq2einsum_eq(indexes):

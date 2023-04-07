@@ -1,0 +1,10 @@
+length: 784
+d: 2
+chi: 30
+boundary: periodic
+device: cpu
+dtype: torch.float64
+num_c: 2
+bias: True
+eps: 0.01
+

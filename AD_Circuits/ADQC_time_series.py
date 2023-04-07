@@ -34,8 +34,14 @@ x = tc.arange(para['length_tot'])
 series = series_sin_cos(x, tc.randn(para['order']),
                         tc.randn(para['order']))
 
-plt.plot(series)
+num_train = int(series.numel() * 0.8)
+f_train, = plt.plot(list(range(num_train)), series[:num_train])
+f_test, = plt.plot(list(range(num_train-1, series.numel(), 1)),
+                   series[num_train-1:], linewidth='3', color='r')
 plt.title('Time series to be learnt')
+plt.legend([f_train, f_test], ['training set', 'testing set'])
+plt.xlabel('t')
+plt.ylabel('x')
 plt.show()
 
 print('预处理数据')
@@ -48,7 +54,7 @@ series1 = series1 / ratio
 
 print('训练LSTM实现预测')
 _, results_lstm, para_lstm = \
-    LSTM_algo.LSTM_predict_time_series(series1,para_lstm)
+    LSTM_algo.LSTM_predict_time_series(series1, para_lstm)
 output_lstm = tc.cat([results_lstm['train_pred'],
                       results_lstm['test_pred']], dim=0)
 output_lstm = output_lstm * ratio - shift

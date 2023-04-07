@@ -191,7 +191,6 @@ def rank1_tc(x, v=None, it_time=10000, tol=1e-14):
             norm1 = norm
         if err.sum()/x.ndimension() < tol and err_norm.sum()/x.ndimension() < tol:
             break
-
     return v, norm1
 
 
@@ -220,11 +219,12 @@ def rotate_pauli(theta, direction):
 
 def series_sin_cos(x, coeff_sin, coeff_cos, k_step=0.02):
     y = tc.ones(x.numel(), device=x.device, dtype=x.dtype) * coeff_cos[0]
-    coeff_sin, coeff_cos = coeff_sin.to(device=x.device, dtype=x.dtype), coeff_cos.to(device=x.device, dtype=x.dtype)
+    coeff_sin, coeff_cos = coeff_sin.to(device=x.device, dtype=x.dtype), \
+                           coeff_cos.to(device=x.device, dtype=x.dtype)
     for n in range(1, len(coeff_sin)):
-        y = y + tc.sin(x * coeff_sin[n] * n * k_step)
+        y = y + tc.sin(x * n * k_step) * coeff_sin[n]
     for n in range(1, len(coeff_cos)):
-        y = y + tc.cos(coeff_cos[n] * n * k_step)
+        y = y + tc.cos(x * n * k_step) * coeff_cos[n]
     return y
 
 
@@ -291,10 +291,10 @@ def swap():
 def ttd_np(x, chi=-1, svd=True):
     """
     :param x: tensor to be decomposed
-    :param chi: dimension cut-off. Use QR decomposition when chi=None;
-                use SVD but don'tc truncate when chi=-1
+    :param chi: dimension cut-off. Use QR decomposition when dc=None;
+                use SVD but don'tc truncate when dc=-1
     :return tensors: tensors in the TT form
-    :return lm: singular values in each decomposition (calculated when chi is not None)
+    :return lm: singular values in each decomposition (calculated when dc is not None)
     """
     dims = x.shape
     ndim = x.ndim
@@ -320,19 +320,19 @@ def ttd_np(x, chi=-1, svd=True):
             dimL1 = dc
         tensors.append(q.reshape(dimL, dims[n], dimL1))
         dimL = dimL1
-    tensors.append(x.reshape(dimL, dims[-1]))
-    tensors[0] = tensors[0][0, :, :]
+    tensors.append(x.reshape(dimL, dims[-1], 1))
+    # tensors[0] = tensors[0][0, :, :]
     return tensors, lm
 
 
 def ttd_tc(x, chi=-1, svd=True):
     """
     :param x: tensor to be decomposed
-    :param chi: dimension cut-off. Use QR decomposition when chi=None;
-                use SVD but don'tc truncate when chi=-1
+    :param chi: dimension cut-off. Use QR decomposition when dc=None;
+                use SVD but don'tc truncate when dc=-1
     :param svd: use svd or qr
     :return tensors: tensors in the TT form
-    :return lm: singular values in each decomposition (calculated when chi is not None)
+    :return lm: singular values in each decomposition (calculated when dc is not None)
     """
     dims = x.shape
     ndim = x.ndimension()
@@ -352,29 +352,29 @@ def ttd_tc(x, chi=-1, svd=True):
             else:
                 dc = s.numel()
             q = q[:, :dc]
-            s = s[:dc]
+            s = s[:dc].to(q.dtype)
             lm.append(s)
             x = tc.diag(s).mm(v[:dc, :])
             dimL1 = dc
         tensors.append(q.reshape(dimL, dims[n], dimL1))
         dimL = dimL1
-    tensors.append(x.reshape(dimL, dims[-1]))
-    tensors[0] = tensors[0][0, :, :]
+    tensors.append(x.reshape(dimL, dims[-1], 1))
+    # tensors[0] = tensors[0][0, :, :]
     return tensors, lm
 
 
-def ttd(x, chi=None):
+def ttd(x, dc=None):
     """
     :param x: tensor to be decomposed
-    :param chi: dimension cut-off. Use QR decomposition when chi=None;
+    :param dc: dimension cut-off. Use QR decomposition when chi=None;
                 use SVD but don'tc truncate when chi=-1
     :return tensors: tensors in the TT form
     :return lm: singular values in each decomposition (calculated when chi is not None)
     """
     if type(x) is np.ndarray:
-        return ttd_np(x, chi)
+        return ttd_np(x, dc)
     else:
-        return ttd_tc(x, chi)
+        return ttd_tc(x, dc)
 
 
 def tucker_product(tensor, mats, pos=None, dim=1, conj=False):

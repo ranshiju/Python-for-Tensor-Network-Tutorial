@@ -11,7 +11,7 @@ from Library.DataFun import load_mnist
 
 # 注：本代码考虑的是二分类问题
 dims_nn = [784, 100, 5]  # NN维数 [输入，中间，输出]
-nn_depth = 1  # NN层数
+nn_depth = 2  # NN层数
 qc_depth = 2  # QC层数
 
 it_time = 2000  # 迭代总次数
