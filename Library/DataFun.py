@@ -76,10 +76,7 @@ def feature_map(samples, which='cossin', para=None, norm_p=2):
             img1 = img1 ** 2
         return img1
     elif which == 'linear':
-        img1 = tc.cat([samples, 1 - samples], dim=1)
-        if norm_p == 2:
-            img1 = tc.sqrt(img1)
-        return img1
+        return tc.cat([samples, 1 - samples], dim=1)
     elif which == 'gaussian':
         return feature_map_gaussian_discretization(
             samples, norm_p=norm_p, d=para['d'], alpha=para['alpha'])

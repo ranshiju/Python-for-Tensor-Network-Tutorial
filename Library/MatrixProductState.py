@@ -6,6 +6,7 @@ import Library.BasicFun as bf
 class MPS_basic:
 
     def __init__(self, tensors=None, para=None):
+        self.name = 'MPS'
         self.para = dict()
         self.input_paras(para)
         self.center = -1  # 正交中心（-1代表不具有正交中心）
@@ -247,11 +248,31 @@ class ResMPS_basic(nn.Module, MPS_basic):
 
     def __init__(self, tensors=None, para=None):
         super(ResMPS_basic, self).__init__()
-        para['boundary'] = 'periodic'  # ResMPS首尾虚拟维数需为chi
+        para['boundary'] = 'open'
         MPS_basic.__init__(self, tensors=tensors, para=para)
+        self.name = 'SimpleResMPS'
         self.input_paras_ResMPS(para)
-        self.fc = nn.Linear(self.para['chi'], self.para['num_c']).to(
-            device=self.device, dtype=self.dtype)
+
+        if self.para['last_fc']:
+            self.fc = nn.Linear(self.para['chi'], self.para['num_c'],
+                                bias=self.para['bias_fc']).to(device=self.device, dtype=self.dtype)
+        else:
+            self.fc = None
+
+        self.pos_c = self.para['pos_c']
+        if self.pos_c == 'mid':
+            self.pos_c = round(len(self.tensors) / 2)
+        if (tensors is None) or (self.tensors[self.pos_c].ndimension != 4):
+            s = self.tensors[self.pos_c].shape
+            if self.fc is None:
+                self.tensors[self.pos_c] = tc.randn(
+                    s[0], s[1], self.para['num_c'], s[2]).to(
+                    device=self.device, dtype=self.dtype)
+            else:
+                self.tensors[self.pos_c] = tc.randn(
+                    s[0], s[1], self.para['chi'], s[2]).to(
+                    device=self.device, dtype=self.dtype)
+
         self.to(self.device, self.dtype)
         self.tensors2ParameterList(self.para['eps'])
         if self.para['bias']:
@@ -263,29 +284,133 @@ class ResMPS_basic(nn.Module, MPS_basic):
         self.dropout = self.para['dropout']
         self.update_attributes_para()
 
-    def forward(self, x, v=None):
+    def forward(self, x, vL=None, vR=None):
         # x.shape = [样本数，特征维数，特征数]
-        if v is None:
-            v = tc.ones((x.shape[0], self.tensors[0].shape[0]),
-                        device=self.device, dtype=self.dtype)
-            v = v / x.shape[1]
-        for n in range(x.shape[2]):
-            dv = tc.einsum('abc,na,nb->nc', self.tensors[n], v, x[:, :, n])
+        if vL is None:
+            vL = tc.ones((x.shape[0], self.tensors[0].shape[0]),
+                         device=self.device, dtype=self.dtype)
+            vL = vL / self.tensors[0].shape[0]
+        for n in range(self.pos_c):
+            dv = tc.einsum('abc,na,nb->nc', self.tensors[n], vL, x[:, :, n])
             if self.dropout is not None:
                 dv = nn.Dropout(p=self.dropout)(dv)
-            v = v + dv
+            vL = vL + dv
             if self.bias is not None:
-                v = v + self.bias[n, :].repeat(x.shape[0], 1)
-        v = self.fc(v)
+                vL = vL + self.bias[n, :].repeat(x.shape[0], 1)
+        if vR is None:
+            vR = tc.ones((x.shape[0], self.tensors[-1].shape[-1]),
+                         device=self.device, dtype=self.dtype)
+            vR = vR / self.tensors[-1].shape[-1]
+        for n in range(x.shape[2]-1, self.pos_c, -1):
+            dv = tc.einsum('abc,nc,nb->na', self.tensors[n], vR, x[:, :, n])
+            if self.dropout is not None:
+                dv = nn.Dropout(p=self.dropout)(dv)
+            vR = vR + dv
+            if self.bias is not None:
+                vR = vR + self.bias[n, :].repeat(x.shape[0], 1)
+        dv = tc.einsum('abcd,na,nb,nd->nc', self.tensors[
+            self.pos_c], vL, x[:, :, self.pos_c], vR)
+        if self.dropout is not None:
+            dv = nn.Dropout(p=self.dropout)(dv)
+        if self.fc is None:
+            if self.bias is not None:
+                v = dv + self.bias[self.pos_c, :].repeat(x.shape[0], 1)
+            else:
+                v = dv
+        else:
+            v = dv + (vL + vR) / 2
+            v = self.fc(v)
         return v
 
     def input_paras_ResMPS(self, para=None):
         para0 = {
+            'pos_c': 'mid',
             'eps': 1e-2,
-            'num_c': 2,
+            'num_c': 2,  # 类别数
             'bias': False,
-            'dropout': None
+            'dropout': None,
+            'last_fc': False  # 是否在最后加一层FC层
         }
+        if para is None:
+            self.para = dict(self.para, **para0)
+        else:
+            self.para = dict(self.para, **dict(para0, **para))
+
+    def tensors2ParameterList(self, eps=1.0):
+        tensors = nn.ParameterList()
+        for n, x in enumerate(self.tensors):
+            if (self.fc is None) and (n == self.pos_c):
+                tensors.append(nn.Parameter(x, requires_grad=True))
+            else:
+                tensors.append(nn.Parameter(x*eps, requires_grad=True))
+        self.tensors = tensors
+
+
+class activated_ResMPS(ResMPS_basic):
+
+    def __init__(self, tensors=None, para=None):
+        super(activated_ResMPS, self).__init__(
+            tensors=tensors, para=para)
+        self.name = 'ActivatedResMPS'
+        self.input_paras_activated_ResMPS(para)
+        if self.para['activation'] is not None:
+            self.activate = eval('nn.' + self.para['activation'] + '()')
+        else:
+            self.activate = None
+
+    def forward(self, x, vL=None, vR=None):
+        # x.shape = [样本数，特征维数，特征数]
+        if vL is None:
+            vL = tc.ones((x.shape[0], self.tensors[0].shape[0]),
+                         device=self.device, dtype=self.dtype)
+            vL = vL / x.shape[1]
+            # vL = tc.zeros((x.shape[0], self.tensors[0].shape[0]),
+            #              device=self.device, dtype=self.dtype)
+            # vL[:, 0] = 1.0
+        for n in range(self.pos_c):
+            dv = tc.einsum('abc,na,nb->nc', self.tensors[n], vL, x[:, :, n])
+            if self.activate is not None:
+                dv = self.activate(dv)
+            if self.dropout is not None:
+                dv = nn.Dropout(p=self.dropout)(dv)
+            vL = vL + dv
+            if self.bias is not None:
+                vL = vL + self.bias[n, :].repeat(x.shape[0], 1)
+        if vR is None:
+            vR = tc.ones((x.shape[0], self.tensors[0].shape[0]),
+                         device=self.device, dtype=self.dtype)
+            vR = vR / x.shape[1]
+            # vR = tc.zeros((x.shape[0], self.tensors[0].shape[0]),
+            #               device=self.device, dtype=self.dtype)
+            # vR[:, 0] = 1.0
+        for n in range(x.shape[2]-1, self.pos_c, -1):
+            dv = tc.einsum('abc,nc,nb->na', self.tensors[n], vR, x[:, :, n])
+            if self.activate is not None:
+                dv = self.activate(dv)
+            if self.dropout is not None:
+                dv = nn.Dropout(p=self.dropout)(dv)
+            vR = vR + dv
+            if self.bias is not None:
+                vR = vR + self.bias[n, :].repeat(x.shape[0], 1)
+        dv = tc.einsum('abcd,na,nb,nd->nc', self.tensors[
+            self.pos_c], vL, x[:, :, self.pos_c], vR)
+        if self.activate is not None:
+            dv = self.activate(dv)
+        if self.dropout is not None:
+            dv = nn.Dropout(p=self.dropout)(dv)
+        if self.fc is None:
+            if self.bias is not None:
+                v = dv + self.bias[self.pos_c, :].repeat(x.shape[0], 1)
+            else:
+                v = dv
+        else:
+            v = dv + (vL + vR) / 2
+            v = self.fc(v)
+        return v
+
+    def input_paras_activated_ResMPS(self, para=None):
+        para0 = {
+            'activation': 'ReLU'}
         if para is None:
             self.para = dict(self.para, **para0)
         else:
@@ -298,12 +423,14 @@ def check_center_orthogonality(tensors, center, prt=False):
         s = tensors[n].shape
         tmp = tensors[n].reshape(-1, s[-1])
         tmp = tmp.t().conj().mm(tmp)
-        err[n] = (tmp - tc.eye(tmp.shape[0])).norm(p=1).item()
+        err[n] = (tmp - tc.eye(tmp.shape[0], device=tensors[n].device,
+                               dtype=tensors[n].dtype)).norm(p=1).item()
     for n in range(len(tensors)-1, center, -1):
         s = tensors[n].shape
         tmp = tensors[n].reshape(s[0], -1)
         tmp = tmp.mm(tmp.t().conj())
-        err[n] = (tmp - tc.eye(tmp.shape[0])).norm(p=1).item()
+        err[n] = (tmp - tc.eye(tmp.shape[0], device=tensors[n].device,
+                               dtype=tensors[n].dtype)).norm(p=1).item()
 
     if prt:
         print('Orthogonality check:')
@@ -358,7 +485,7 @@ def inner_product(tensors0, tensors1, form='log'):
     if form == 'log':  # 返回模方的log，舍弃符号
         norm = 0.0
         for x in norm_list:
-            norm = norm + tc.log(x)
+            norm = norm + tc.log(x.abs())
     elif form == 'list':  # 返回列表
         return norm_list
     else:  # 直接返回模方

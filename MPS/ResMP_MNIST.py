@@ -1,75 +1,49 @@
 import torch as tc
-from torch import nn, optim
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-from Library import DataFun as df
-from Library.BasicFun import print_dict
-from Library.MatrixProductState import ResMPS_basic
+from Library.DataFun import load_mnist
+from Algorithms.MPS_algo import ResMPS_classifier
 
 
-feature_map = 'reshape'  # 特征映射
-it_time = 2000  # 迭代总次数
-batch_size = 2000  # batch尺寸
-lr = 1e-3  # 学习率
-# ResMPS参数
+dataset = 'fmnist'
+batch_size = 50
 para = {
-    'num_c': 10,  # 类别数
-    'length': 784,  # MPS长度（特征数）
-    'd': 1,  # 特征映射维数
-    'chi': 40,  # 虚拟维数
-    'bias': False,  # 是否加偏置项
-    'eps': 1e-6,  # 扰动大小
-    'dropout': 0.2  # dropout概率（None为不dropout）
+    'ResMPS': 'simple',  # ResMPS种类
+    'lr': 1e-4,  # 学习率
+    'feature_map': 'linear',
+    'it_time': 30  # 优化次数
 }
-if feature_map == 'reshape':
-    para['d'] = 1
+paraMPS = {
+    'd': 2,  # 物理指标维数
+    'chi': 100,  # 虚拟维数
+    'pos_c': 'mid',  # 类别指标位置
+    'last_fc': False,  # 是否在最后加一层FC层
+    'bias': False,  # 偏置项
+    'dropout': 0.6  # dropout概率（None为不dropout）
+}
 
-train_dataset, test_dataset = df.load_mnist(
-    'MNIST', process={'normalize': [0.5, 0.5]})
-train_dataset = DataLoader(train_dataset, batch_size, True)
-test_dataset = DataLoader(test_dataset, batch_size, False)
+train_dataset, test_dataset = load_mnist(dataset)
+train_loader = DataLoader(train_dataset, batch_size, True)
+test_loader = DataLoader(test_dataset, batch_size, False)
 
-mps = ResMPS_basic(para=para)
-print('ResMPS的超参数为：')
-print_dict(mps.para)
-optimizer = optim.Adam(mps.parameters(), lr=lr)
-criterion = nn.CrossEntropyLoss()
 
-for t in range(it_time):
-    print('\n训练epoch: %d' % t)
-    mps.train()
-    loss_rec, num_c, total = 0, 0, 0
-    for nb, (img, lb) in enumerate(train_dataset):
-        vecs = df.feature_map(img.to(
-            device=mps.device, dtype=mps.dtype),
-            which=feature_map, para={'d': para['d']})
-        lb = lb.to(device=mps.device)
-        y = mps(vecs)
-        loss = criterion(y, lb)
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-        loss_rec += loss.item()
-        predicted = y.argmax(dim=1)
-        total += lb.shape[0]
-        num_c += predicted.eq(lb).sum().item()
-        if (nb % 20 == 0) or (nb == len(train_dataset)-1):
-            print('%i个batch已训练; loss: %g, acc: %g' %
-                  ((nb+1), loss_rec/(nb+1), num_c/total))
+para['ResMPS'] = 'activated'
+paraMPS['activation'] = 'ReLU'
+infor_s, _ = ResMPS_classifier(
+    train_loader, test_loader, para=para, paraMPS=paraMPS)
 
-    test_loss, num_c, total = 0, 0, 0
-    mps.eval()
-    print('测试集:')
-    with tc.no_grad():
-        for nt, (imgt, lbt) in enumerate(test_dataset):
-            vecs = df.feature_map(imgt.to(
-                device=mps.device, dtype=mps.dtype),
-                which=feature_map, para={'d': para['d']})
-            lbt = lbt.to(device=mps.device)
-            yt = mps(vecs)
-            loss = criterion(yt, lbt)
-            test_loss += loss.item()
-            predicted = yt.argmax(dim=1)
-            total += lbt.shape[0]
-            num_c += predicted.eq(lbt).sum().item()
-        print('loss: %g, acc: %g%% '
-              % (test_loss / (nt+1), 100 * num_c / total))
+
+infor_a, _ = ResMPS_classifier(
+    train_loader, test_loader, para=para, paraMPS=paraMPS)
+
+x = tc.arange(infor_s['train_acc'].numel())
+l1, = plt.plot(x, infor_s['train_acc'], color='blue')
+l2, = plt.plot(x, infor_s['test_acc'], color='red')
+l3, = plt.plot(x, infor_a['train_acc'], linestyle='--', color='green')
+l4, = plt.plot(x, infor_a['test_acc'], linestyle='--', color='black')
+plt.legend([l1, l2, l3, l4],
+           ['train acc (simple)', 'test acc (simple)',
+            'train acc ('+paraMPS['activation']+')',
+            'test acc ('+paraMPS['activation']+')'])
+plt.xlabel('training epoch')
+plt.show()
