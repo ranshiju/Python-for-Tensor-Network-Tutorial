@@ -1,21 +1,17 @@
 import Library.MathFun as mf
 import torch as tc
 import numpy as np
+from matplotlib import pyplot
 import Library.BasicFun as bf
 import math, time
+from random import choices
 
 
-d = 20000
-dtype = tc.float32
+from matplotlib.font_manager import FontManager
+import subprocess
 
-dev = bf.choose_device()
-print(dev)
+mpl_fonts = set(f.name for f in FontManager().ttflist)
 
-total = time.time()
-for n in range(30):
-    t = time.time()
-    for m in range(10):
-        x = tc.randn((d, d), device=dev, dtype=dtype)
-        y = x.mm(x).mm(x).mm(x) / x.norm()
-    print('time cost = %9g' % (time.time() - t))
-print('Total time = %.9g' % (time.time() - total))
+print('all font list get from matplotlib.font_manager:')
+for f in sorted(mpl_fonts):
+    print('\t' + f)

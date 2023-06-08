@@ -30,6 +30,22 @@ def combine_dicts(dic_def, dic_new, deep_copy=False):
         return dict(dic_def, **dic_new)
 
 
+def compare_dicts(dict1, dict2, name1='dict1', name2='dict2'):
+    same = True
+    for x in dict1:
+        if x not in dict2:
+            print(str(x) + ': in ' + name1 + ' but not in ' + name2)
+            same = False
+        elif dict1[x] != dict2[x]:
+            print(str(x) + ': value in ' + name1 + ' different from ' + name2)
+            same = False
+    for x in dict2:
+        if x not in dict1:
+            print(str(x) + ': in ' + name2 + ' but not in ' + name1)
+            same = False
+    return same
+
+
 def convert_nums_to_abc(nums, n0=0):
     s = ''
     n0 = n0 + 97
@@ -125,22 +141,32 @@ def mkdir(path):
         os.makedirs(path)
 
 
-def plot(x, *y, marker='s'):
+def plot(x, *y, marker='s', linestyle='-', xlabel=None, ylabel=None, legend=None):
     if type(x) is tc.Tensor:
-        if x.device != 'cpu':
-            x = x.cpu()
-        x = x.numpy()
+        x = x.cpu().numpy()
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     if len(y) > 0.5:
-        for y0 in y:
+        figs = [None] * len(y)
+        if type(marker) is str:
+            marker = [marker] * len(y)
+        if type(linestyle) is str:
+            linestyle = [linestyle] * len(y)
+        for n, y0 in enumerate(y):
             if type(y0) is tc.Tensor:
-                if y0.device != 'cpu':
-                    y0 = y0.cpu()
-                y0 = y0.numpy()
-            ax.plot(x, y0, marker=marker)
+                y0 = y0.cpu().numpy()
+            figs[n], = ax.plot(x, y0, marker=marker[n],
+                               linestyle=linestyle[n])
     else:
-        ax.plot(x, marker=marker)
+        figs, = ax.plot(np.arange(len(x)), x,
+                        marker=marker, linestyle=linestyle)
+        figs = [figs]
+    if legend is not None:
+        plt.legend(figs, legend)
+    if xlabel is not None:
+        plt.xlabel(xlabel)
+    if ylabel is not None:
+        plt.ylabel(ylabel)
     plt.show()
 
 
@@ -179,6 +205,12 @@ def print_mat(mat):
         print(list(x))
 
 
+def remove_list1_from_list0(list0, list1):
+    for x in list1:
+        list0.remove(x)
+    return list0
+
+
 def replace_value(x, value0, value_new):
     x_ = np.array(x)
     x_[x_ == value0] = value_new
@@ -202,6 +234,38 @@ def search_file(path, exp):
         if re.match(exp, x):
             result.append(os.path.join(path, x))
     return result
+
+
+def show_multiple_images(imgs, lxy=None, titles=None, save_name=None, show=True, cmap=None):
+    if cmap is None:
+        cmap = plt.cm.gray
+    ni = len(imgs)
+    if lxy is None:
+        lx = int(np.sqrt(ni)) + 1
+        ly = int(ni / lx) + 1
+    else:
+        lx, ly = tuple(lxy)
+    plt.figure()
+    plt.rcParams['font.sans-serif'] = ['Songti SC']
+    for n in range(ni):
+        plt.subplot(lx, ly, n + 1)
+        if type(imgs[n]) is tc.Tensor:
+            tmp = imgs[n].cpu().numpy()
+        else:
+            tmp = imgs[n]
+        if tmp.ndim == 2:
+            plt.imshow(tmp, cmap=cmap)
+        else:
+            plt.imshow(tmp)
+        if titles is not None:
+            plt.title(str(titles[n]))
+        plt.axis('off')
+        plt.xticks([])
+        plt.yticks([])
+    if type(save_name) is str:
+        plt.savefig(save_name)
+    if show:
+        plt.show()
 
 
 def sort_list(a, order):

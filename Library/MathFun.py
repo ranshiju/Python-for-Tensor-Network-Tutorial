@@ -119,7 +119,7 @@ def rank1(x, v=None, it_time=2000, tol=1e-14):
     """
     :param x: tensor to be decomposed
     :param v: initial vectors (default: random)
-    :param it_time: total iteration time
+    :param it_time: average iteration time
     :param tol: tolerance to break the iteration
     :return: vectors and factor of the rank-1 decomposition
     """
@@ -273,8 +273,8 @@ def spin_operators(spin, is_torch=True):
 def super_diagonal_tensor(dim, order):
     """
     :param dim: bond dimension
-    :param order: tensor order
-    :return: high-order super-orthogonal tensor
+    :param order: tensor order_g
+    :return: high-order_g super-orthogonal tensor
     """
     delta = tc.zeros([dim] * order, dtype=tc.float64)
     for n in range(dim):

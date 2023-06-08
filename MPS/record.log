@@ -1,10 +1,1189 @@
-length: 784
-d: 2
-chi: 30
-boundary: periodic
-device: cpu
-dtype: torch.float64
-num_c: 2
-bias: True
-eps: 0.01
-
+Initially, nll = 759.368
+t = 0, nll = 312.322
+t = 1, nll = 172.661
+t = 2, nll = 118.78
+t = 3, nll = 95.1162
+t = 4, nll = 85.5335
+t = 5, nll = 78.3812
+t = 6, nll = 72.3625
+t = 7, nll = 67.5472
+t = 8, nll = 64.1485
+t = 9, nll = 62.1733
+t = 10, nll = 61.3626
+t = 11, nll = 60.9572
+t = 12, nll = 60.4436
+t = 13, nll = 60.0683
+t = 14, nll = 60.0434
+t = 15, nll = 59.9497
+t = 16, nll = 60.1279
+t = 17, nll = 59.91
+t = 18, nll = 59.9643
+t = 19, nll = 59.8437
+t = 20, nll = 59.757
+t = 21, nll = 59.7685
+t = 22, nll = 59.7333
+t = 23, nll = 59.6869
+t = 24, nll = 59.6914
+t = 25, nll = 59.6193
+t = 26, nll = 59.5814
+t = 27, nll = 59.5814
+t = 28, nll = 59.613
+t = 29, nll = 59.5142
+t = 30, nll = 59.4922
+t = 31, nll = 59.5304
+t = 32, nll = 59.4453
+t = 33, nll = 59.4501
+t = 34, nll = 59.4382
+t = 35, nll = 59.464
+t = 36, nll = 59.4525
+t = 37, nll = 59.4127
+t = 38, nll = 59.4021
+t = 39, nll = 59.4413
+t = 40, nll = 59.4014
+t = 41, nll = 59.3797
+t = 42, nll = 59.4055
+t = 43, nll = 59.3632
+t = 44, nll = 59.3824
+t = 45, nll = 59.354
+t = 46, nll = 59.3631
+t = 47, nll = 59.3421
+t = 48, nll = 59.3619
+t = 49, nll = 59.3462
+t = 50, nll = 59.335
+t = 51, nll = 59.3299
+t = 52, nll = 59.3223
+t = 53, nll = 59.3307
+t = 54, nll = 59.3187
+t = 55, nll = 59.3179
+t = 56, nll = 59.3139
+t = 57, nll = 59.328
+t = 58, nll = 59.3149
+t = 59, nll = 59.3197
+t = 60, nll = 59.306
+t = 61, nll = 59.3074
+t = 62, nll = 59.3003
+t = 63, nll = 59.2988
+t = 64, nll = 59.2982
+t = 65, nll = 59.2978
+t = 66, nll = 59.2976
+t = 67, nll = 59.2974
+t = 68, nll = 59.2976
+t = 69, nll = 59.2966
+t = 70, nll = 59.2963
+t = 71, nll = 59.2963
+t = 72, nll = 59.2962
+t = 73, nll = 59.2962
+t = 74, nll = 59.2961
+t = 75, nll = 59.2961
+t = 76, nll = 59.2961
+t = 77, nll = 59.2961
+t = 78, nll = 59.296
+t = 79, nll = 59.296
+t = 80, nll = 59.296
+t = 81, nll = 59.296
+t = 82, nll = 59.296
+t = 83, nll = 59.296
+t = 84, nll = 59.296
+t = 85, nll = 59.2955
+t = 86, nll = 59.2955
+t = 87, nll = 59.2955
+t = 88, nll = 59.2954
+t = 89, nll = 59.2954
+t = 90, nll = 59.2954
+t = 91, nll = 59.2954
+t = 92, nll = 59.295
+t = 93, nll = 59.295
+t = 94, nll = 59.2949
+t = 95, nll = 59.2949
+t = 96, nll = 59.2949
+t = 97, nll = 59.2949
+t = 98, nll = 59.2949
+t = 99, nll = 59.2949
+Training GMPS for digits 0
+Training GMPS for digits 0
+Initially, nll = 767.211
+t = 0, nll = 301.113
+t = 1, nll = 150.877
+t = 2, nll = 101.306
+t = 3, nll = 87.1932
+t = 4, nll = 77.7781
+t = 5, nll = 71.6756
+t = 6, nll = 68.2508
+t = 7, nll = 65.7024
+t = 8, nll = 64.2014
+t = 9, nll = 61.883
+t = 10, nll = 61.4488
+t = 11, nll = 60.9326
+t = 12, nll = 60.6164
+t = 13, nll = 60.397
+t = 14, nll = 60.3692
+t = 15, nll = 60.2205
+t = 16, nll = 60.3035
+t = 17, nll = 60.167
+t = 18, nll = 60.1015
+t = 19, nll = 60.1345
+t = 20, nll = 59.7499
+t = 21, nll = 59.7315
+t = 22, nll = 59.6702
+t = 23, nll = 59.7636
+t = 24, nll = 59.5537
+t = 25, nll = 59.5934
+t = 26, nll = 59.5635
+t = 27, nll = 59.5056
+t = 28, nll = 59.5381
+t = 29, nll = 59.4073
+t = 30, nll = 59.4467
+t = 31, nll = 59.3948
+t = 32, nll = 59.3747
+t = 33, nll = 59.3781
+t = 34, nll = 59.3293
+t = 35, nll = 59.2955
+t = 36, nll = 59.2953
+t = 37, nll = 59.3207
+t = 38, nll = 59.3055
+t = 39, nll = 59.2953
+t = 40, nll = 59.2656
+t = 41, nll = 59.3062
+t = 42, nll = 59.3038
+t = 43, nll = 59.2697
+t = 44, nll = 59.2521
+t = 45, nll = 59.2473
+t = 46, nll = 59.219
+t = 47, nll = 59.2541
+t = 48, nll = 59.2335
+t = 49, nll = 59.2354
+t = 50, nll = 59.1987
+t = 51, nll = 59.2031
+t = 52, nll = 59.1899
+t = 53, nll = 59.1939
+t = 54, nll = 59.1723
+t = 55, nll = 59.1736
+t = 56, nll = 59.1554
+t = 57, nll = 59.1667
+t = 58, nll = 59.1566
+t = 59, nll = 59.1502
+t = 60, nll = 59.15
+t = 61, nll = 59.1524
+t = 62, nll = 59.1492
+t = 63, nll = 59.1487
+t = 64, nll = 59.1486
+t = 65, nll = 59.1484
+t = 66, nll = 59.1498
+t = 67, nll = 59.1469
+t = 68, nll = 59.1466
+t = 69, nll = 59.1465
+t = 70, nll = 59.1464
+t = 71, nll = 59.1463
+t = 72, nll = 59.1463
+t = 73, nll = 59.1463
+t = 74, nll = 59.1463
+t = 75, nll = 59.1464
+t = 76, nll = 59.1458
+t = 77, nll = 59.1457
+t = 78, nll = 59.1457
+t = 79, nll = 59.1456
+t = 80, nll = 59.1456
+t = 81, nll = 59.1456
+t = 82, nll = 59.1455
+t = 83, nll = 59.1455
+t = 84, nll = 59.145
+t = 85, nll = 59.1449
+t = 86, nll = 59.1448
+t = 87, nll = 59.1448
+t = 88, nll = 59.1448
+t = 89, nll = 59.1444
+t = 90, nll = 59.1443
+t = 91, nll = 59.1442
+t = 92, nll = 59.1442
+t = 93, nll = 59.1442
+t = 94, nll = 59.1439
+t = 95, nll = 59.1438
+t = 96, nll = 59.1438
+t = 97, nll = 59.1438
+t = 98, nll = 59.1438
+t = 99, nll = 59.1435
+Training GMPS for digits 1
+Initially, nll = 744.638
+t = 0, nll = 238.071
+t = 1, nll = 119.875
+t = 2, nll = 87.977
+t = 3, nll = 75.2344
+t = 4, nll = 68.7503
+t = 5, nll = 64.7057
+t = 6, nll = 60.5787
+t = 7, nll = 58.5903
+t = 8, nll = 57.233
+t = 9, nll = 55.3887
+t = 10, nll = 53.2613
+t = 11, nll = 52.5247
+t = 12, nll = 52.0556
+t = 13, nll = 51.5501
+t = 14, nll = 51.3553
+t = 15, nll = 51.3295
+t = 16, nll = 51.4287
+t = 17, nll = 51.2501
+t = 18, nll = 50.9955
+t = 19, nll = 50.8474
+t = 20, nll = 50.8717
+t = 21, nll = 50.6837
+t = 22, nll = 50.6211
+t = 23, nll = 50.5241
+t = 24, nll = 50.4627
+t = 25, nll = 50.4719
+t = 26, nll = 50.3385
+t = 27, nll = 50.3435
+t = 28, nll = 50.22
+t = 29, nll = 50.2776
+t = 30, nll = 50.1144
+t = 31, nll = 50.0888
+t = 32, nll = 50.1588
+t = 33, nll = 50.0784
+t = 34, nll = 50.0334
+t = 35, nll = 50.0175
+t = 36, nll = 49.997
+t = 37, nll = 50.002
+t = 38, nll = 49.9284
+t = 39, nll = 49.9627
+t = 40, nll = 49.8585
+t = 41, nll = 49.8022
+t = 42, nll = 49.7957
+t = 43, nll = 49.7603
+t = 44, nll = 49.7574
+t = 45, nll = 49.7468
+t = 46, nll = 49.7602
+t = 47, nll = 49.7107
+t = 48, nll = 49.6718
+t = 49, nll = 49.6724
+t = 50, nll = 49.6481
+t = 51, nll = 49.6228
+t = 52, nll = 49.6727
+t = 53, nll = 49.6566
+t = 54, nll = 49.6317
+t = 55, nll = 49.6381
+t = 56, nll = 49.5967
+t = 57, nll = 49.5914
+t = 58, nll = 49.6007
+t = 59, nll = 49.5741
+t = 60, nll = 49.6044
+t = 61, nll = 49.5933
+t = 62, nll = 49.5902
+t = 63, nll = 49.5636
+t = 64, nll = 49.5559
+t = 65, nll = 49.5499
+t = 66, nll = 49.5493
+t = 67, nll = 49.5533
+t = 68, nll = 49.5494
+t = 69, nll = 49.5524
+t = 70, nll = 49.5508
+t = 71, nll = 49.5505
+t = 72, nll = 49.5505
+t = 73, nll = 49.5516
+t = 74, nll = 49.5432
+t = 75, nll = 49.5392
+t = 76, nll = 49.5384
+t = 77, nll = 49.5383
+t = 78, nll = 49.5383
+t = 79, nll = 49.5383
+t = 80, nll = 49.5378
+t = 81, nll = 49.5377
+t = 82, nll = 49.5377
+t = 83, nll = 49.5376
+t = 84, nll = 49.5376
+t = 85, nll = 49.5376
+t = 86, nll = 49.5376
+t = 87, nll = 49.5372
+t = 88, nll = 49.5371
+t = 89, nll = 49.5371
+t = 90, nll = 49.537
+t = 91, nll = 49.537
+t = 92, nll = 49.537
+t = 93, nll = 49.5367
+t = 94, nll = 49.5366
+t = 95, nll = 49.5366
+t = 96, nll = 49.5366
+t = 97, nll = 49.5366
+t = 98, nll = 49.5366
+t = 99, nll = 49.5363
+Training GMPS for digits 0
+Training GMPS for digits 0
+Training GMPS for digits 0
+Training GMPS for digits 0
+Initially, nll = nan
+t = 0, nll = nan
+Training GMPS for digits 1
+Initially, nll = nan
+t = 0, nll = nan
+Training GMPS for digits 0
+Initially, nll = nan
+t = 0, nll = nan
+t = 1, nll = nan
+t = 2, nll = nan
+t = 3, nll = nan
+t = 4, nll = nan
+t = 5, nll = nan
+Training GMPS for digits 0
+Initially, nll = nan
+t = 0, nll = nan
+Training GMPS for digits 0
+Initially, nll = nan
+Training GMPS for digits 0
+Initially, nll = 785.304
+t = 0, nll = 314.693
+t = 1, nll = 172.412
+t = 2, nll = 119.616
+t = 3, nll = 96.6092
+t = 4, nll = 87.456
+t = 5, nll = 80.9112
+t = 6, nll = 75.5466
+t = 7, nll = 73.7211
+t = 8, nll = 71.612
+t = 9, nll = 70.4716
+Training GMPS for digits 1
+Initially, nll = 750.877
+t = 0, nll = 256.144
+t = 1, nll = 129.794
+t = 2, nll = 94.6756
+t = 3, nll = 81.2011
+t = 4, nll = 73.4509
+t = 5, nll = 65.1286
+t = 6, nll = 60.8301
+t = 7, nll = 57.7629
+t = 8, nll = 55.6689
+t = 9, nll = 53.4813
+Training GMPS for digits 0
+Initially, nll = 71.8579
+t = 0, nll = 67.7864
+t = 1, nll = 66.7956
+t = 2, nll = 66.0202
+t = 3, nll = 64.2807
+t = 4, nll = 64.0065
+t = 5, nll = 63.4509
+t = 6, nll = 62.9192
+t = 7, nll = 62.0644
+t = 8, nll = 61.761
+t = 9, nll = 61.51
+Training GMPS for digits 1
+Initially, nll = 54.8676
+t = 0, nll = 51.9914
+t = 1, nll = 51.1285
+t = 2, nll = 50.8674
+t = 3, nll = 50.5613
+t = 4, nll = 50.5361
+t = 5, nll = 50.5011
+t = 6, nll = 50.2934
+t = 7, nll = 50.2275
+t = 8, nll = 50.1841
+t = 9, nll = 50.0877
+Training GMPS for digits 0
+Initially, nll = 62.8962
+t = 0, nll = 61.2395
+t = 1, nll = 60.793
+t = 2, nll = 60.7285
+t = 3, nll = 60.6339
+t = 4, nll = 60.4957
+t = 5, nll = 60.3848
+t = 6, nll = 60.5458
+t = 7, nll = 60.3023
+t = 8, nll = 60.2153
+t = 9, nll = 60.1404
+Training GMPS for digits 1
+Initially, nll = 51.474
+t = 0, nll = 50.0714
+t = 1, nll = 50.0558
+t = 2, nll = 50.0307
+t = 3, nll = 50.0037
+t = 4, nll = 50.0007
+t = 5, nll = 49.9869
+t = 6, nll = 49.9759
+t = 7, nll = 49.9208
+t = 8, nll = 49.9492
+t = 9, nll = 49.8862
+Training GMPS for digits 0
+Initially, nll = 61.5267
+t = 0, nll = 60.2817
+t = 1, nll = 60.1132
+t = 2, nll = 60.1462
+t = 3, nll = 60.0152
+t = 4, nll = 60.0378
+t = 5, nll = 59.9365
+t = 6, nll = 59.9119
+t = 7, nll = 59.942
+t = 8, nll = 59.7713
+t = 9, nll = 59.813
+Training GMPS for digits 1
+Initially, nll = 51.2725
+t = 0, nll = 49.9008
+t = 1, nll = 49.8363
+t = 2, nll = 49.8435
+t = 3, nll = 49.8303
+t = 4, nll = 49.8524
+t = 5, nll = 49.825
+t = 6, nll = 49.8262
+t = 7, nll = 49.8201
+t = 8, nll = 49.8107
+t = 9, nll = 49.7959
+Training GMPS for digits 0
+Initially, nll = 61.1993
+t = 0, nll = 60.0799
+t = 1, nll = 60.2191
+t = 2, nll = 60.064
+t = 3, nll = 59.9441
+t = 4, nll = 59.9571
+t = 5, nll = 60.0413
+t = 6, nll = 59.7958
+t = 7, nll = 59.6961
+t = 8, nll = 59.6668
+t = 9, nll = 59.8333
+Training GMPS for digits 1
+Initially, nll = 51.1822
+t = 0, nll = 49.8316
+t = 1, nll = 49.8394
+t = 2, nll = 49.8512
+t = 3, nll = 49.8024
+t = 4, nll = 49.7993
+t = 5, nll = 49.8469
+t = 6, nll = 49.8104
+t = 7, nll = 49.8068
+t = 8, nll = 49.7969
+t = 9, nll = 49.7975
+Training GMPS for digits 0
+Initially, nll = 61.2196
+t = 0, nll = 60.1595
+t = 1, nll = 60.2776
+t = 2, nll = 60.0406
+t = 3, nll = 59.8772
+t = 4, nll = 60.0873
+t = 5, nll = 59.9682
+t = 6, nll = 59.8783
+t = 7, nll = 59.9359
+t = 8, nll = 59.8017
+t = 9, nll = 59.6817
+Training GMPS for digits 1
+Initially, nll = 51.1838
+t = 0, nll = 49.8251
+t = 1, nll = 49.8512
+t = 2, nll = 49.8287
+t = 3, nll = 49.8303
+t = 4, nll = 49.8224
+t = 5, nll = 49.8227
+t = 6, nll = 49.793
+t = 7, nll = 49.7931
+t = 8, nll = 49.7823
+t = 9, nll = 49.7868
+Training GMPS for digits 0
+Initially, nll = 61.068
+t = 0, nll = 60.1057
+t = 1, nll = 60.2493
+t = 2, nll = 60.0454
+t = 3, nll = 59.9662
+t = 4, nll = 60.0082
+t = 5, nll = 59.7866
+t = 6, nll = 59.862
+t = 7, nll = 59.7662
+t = 8, nll = 59.8182
+t = 9, nll = 59.6221
+Training GMPS for digits 1
+Initially, nll = 51.1731
+t = 0, nll = 49.8186
+t = 1, nll = 49.8123
+t = 2, nll = 49.7984
+t = 3, nll = 49.8336
+t = 4, nll = 49.8003
+t = 5, nll = 49.7983
+t = 6, nll = 49.8003
+t = 7, nll = 49.7908
+t = 8, nll = 49.7901
+t = 9, nll = 49.8059
+Training GMPS for digits 0
+Initially, nll = 61.0084
+t = 0, nll = 60.0413
+t = 1, nll = 60.2307
+t = 2, nll = 60.1898
+t = 3, nll = 60.0674
+t = 4, nll = 60.0956
+t = 5, nll = 59.8865
+t = 6, nll = 59.8089
+t = 7, nll = 59.87
+t = 8, nll = 59.8129
+t = 9, nll = 59.7111
+Training GMPS for digits 1
+Initially, nll = 51.1922
+t = 0, nll = 49.8002
+t = 1, nll = 49.8255
+t = 2, nll = 49.808
+t = 3, nll = 49.8126
+t = 4, nll = 49.7941
+t = 5, nll = 49.7944
+t = 6, nll = 49.7958
+t = 7, nll = 49.7801
+t = 8, nll = 49.782
+t = 9, nll = 49.776
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 59.7111
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+t = 0, nll = 60.0588
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Training GMPS for digits 0
+Initially, nll = 59.7111
+Training GMPS for digits 0
+Initially, nll = 59.7111
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Initially, nll = 61.0974
+Training GMPS for digits 0
+Training GMPS for digits 0
+Training GMPS for digits 0
+Training GMPS for digits 0
+Training GMPS for digits 0
+Training GMPS for digits 0
+Initially, nll = 59.7111
+t = 0, nll = 59.9128
+t = 1, nll = 60.0074
+t = 2, nll = 59.917
+t = 3, nll = 59.9906
+t = 4, nll = 59.8753
+t = 5, nll = 59.8048
+t = 6, nll = 59.8586
+t = 7, nll = 59.6473
+t = 8, nll = 59.7893
+t = 9, nll = 59.6518
+Training GMPS for digits 1
+Initially, nll = 49.776
+t = 0, nll = 49.7996
+t = 1, nll = 49.7893
+t = 2, nll = 49.8073
+t = 3, nll = 49.7944
+t = 4, nll = 49.7926
+t = 5, nll = 49.7946
+t = 6, nll = 49.8009
+t = 7, nll = 49.7874
+t = 8, nll = 49.7865
+t = 9, nll = 49.7889
+Training GMPS for digits 0
+Initially, nll = 755.907
+Training GMPS for digits 0
+Initially, nll = 757.242
+t = 0, nll = 289.401
+t = 1, nll = 184.535
+t = 2, nll = 157.163
+t = 3, nll = 141.828
+t = 4, nll = 133.151
+t = 5, nll = 127.171
+t = 6, nll = 122.533
+t = 7, nll = 117.387
+t = 8, nll = 113.527
+t = 9, nll = 111.517
+t = 10, nll = 109.681
+t = 11, nll = 107.411
+t = 12, nll = 105.876
+t = 13, nll = 104.8
+t = 14, nll = 103.506
+t = 15, nll = 101.68
+t = 16, nll = 100.312
+t = 17, nll = 99.2318
+t = 18, nll = 99.0987
+t = 19, nll = 98.2045
+t = 20, nll = 97.3002
+t = 21, nll = 96.4227
+t = 22, nll = 95.6222
+t = 23, nll = 94.8626
+t = 24, nll = 94.4359
+t = 25, nll = 93.6334
+t = 26, nll = 93.3234
+t = 27, nll = 93.0132
+t = 28, nll = 92.3592
+t = 29, nll = 91.9636
+t = 30, nll = 91.0689
+t = 31, nll = 91.0323
+t = 32, nll = 90.0764
+t = 33, nll = 89.787
+t = 34, nll = 89.2715
+t = 35, nll = 89.082
+t = 36, nll = 89.0197
+t = 37, nll = 88.651
+t = 38, nll = 88.5157
+t = 39, nll = 88.1821
+t = 40, nll = 88.1139
+t = 41, nll = 88.0511
+t = 42, nll = 87.9497
+t = 43, nll = 87.9183
+t = 44, nll = 87.7316
+t = 45, nll = 87.7271
+t = 46, nll = 87.692
+t = 47, nll = 87.5474
+t = 48, nll = 87.3271
+t = 49, nll = 87.4053
+t = 50, nll = 87.4472
+t = 51, nll = 87.0746
+t = 52, nll = 87.1184
+t = 53, nll = 86.8548
+t = 54, nll = 86.8083
+t = 55, nll = 86.863
+t = 56, nll = 86.5899
+t = 57, nll = 86.5524
+t = 58, nll = 86.5377
+t = 59, nll = 86.6683
+Training GMPS for digits 1
+Initially, nll = 748.711
+t = 0, nll = 184.445
+t = 1, nll = 84.9788
+t = 2, nll = 72.332
+t = 3, nll = 66.6546
+t = 4, nll = 62.6935
+t = 5, nll = 59.9754
+t = 6, nll = 58.4188
+t = 7, nll = 56.2317
+t = 8, nll = 54.7808
+t = 9, nll = 52.8902
+t = 10, nll = 52.1408
+t = 11, nll = 51.0786
+t = 12, nll = 50.2122
+t = 13, nll = 49.1418
+t = 14, nll = 48.7716
+t = 15, nll = 48.1381
+t = 16, nll = 47.8374
+t = 17, nll = 47.0915
+t = 18, nll = 46.026
+t = 19, nll = 45.7485
+t = 20, nll = 44.5411
+t = 21, nll = 43.7801
+t = 22, nll = 43.0115
+t = 23, nll = 42.6024
+t = 24, nll = 42.1337
+t = 25, nll = 41.8033
+t = 26, nll = 40.7928
+t = 27, nll = 40.6426
+t = 28, nll = 40.2888
+t = 29, nll = 40.143
+t = 30, nll = 40.0705
+t = 31, nll = 39.8081
+t = 32, nll = 39.5878
+t = 33, nll = 39.5059
+t = 34, nll = 39.4337
+t = 35, nll = 39.4363
+t = 36, nll = 39.3785
+t = 37, nll = 38.9824
+t = 38, nll = 38.9865
+t = 39, nll = 38.7865
+t = 40, nll = 38.5601
+t = 41, nll = 38.5424
+t = 42, nll = 38.5891
+t = 43, nll = 38.3314
+t = 44, nll = 38.2073
+t = 45, nll = 38.2595
+t = 46, nll = 38.2185
+t = 47, nll = 38.244
+t = 48, nll = 38.0843
+t = 49, nll = 37.9109
+t = 50, nll = 37.8888
+t = 51, nll = 37.8795
+t = 52, nll = 37.9526
+t = 53, nll = 37.911
+t = 54, nll = 37.8308
+t = 55, nll = 37.7934
+t = 56, nll = 37.721
+t = 57, nll = 37.8044
+t = 58, nll = 37.7193
+t = 59, nll = 37.5121
+Training GMPS for digits 0
+Initially, nll = 778.266
+Training GMPS for digits 0
+Initially, nll = 748.62
+Training GMPS for digits 0
+Initially, nll = 786.381
+t = 0, nll = 291.471
+t = 1, nll = 180.173
+t = 2, nll = 150.113
+t = 3, nll = 135.615
+t = 4, nll = 126.21
+Training GMPS for digits 1
+Initially, nll = 752.28
+t = 0, nll = 185.075
+t = 1, nll = 87.4706
+t = 2, nll = 71.8661
+t = 3, nll = 65.4709
+t = 4, nll = 61.8625
+Training GMPS for digits 0
+Initially, nll = 126.21
+t = 0, nll = 119.773
+t = 1, nll = 115.884
+t = 2, nll = 112.276
+t = 3, nll = 109.549
+t = 4, nll = 106.235
+t = 5, nll = 103.949
+t = 6, nll = 101.254
+t = 7, nll = 98.4041
+t = 8, nll = 97.2383
+t = 9, nll = 95.8916
+t = 10, nll = 95.262
+t = 11, nll = 94.405
+t = 12, nll = 93.8652
+t = 13, nll = 93.2767
+t = 14, nll = 91.7286
+t = 15, nll = 90.9074
+t = 16, nll = 90.0618
+t = 17, nll = 88.9555
+t = 18, nll = 88.164
+t = 19, nll = 87.6081
+t = 20, nll = 87.4234
+t = 21, nll = 86.9826
+t = 22, nll = 86.8657
+t = 23, nll = 86.9162
+t = 24, nll = 86.6373
+t = 25, nll = 86.3352
+t = 26, nll = 86.2483
+t = 27, nll = 85.8105
+t = 28, nll = 85.6876
+t = 29, nll = 85.5266
+t = 30, nll = 85.2779
+t = 31, nll = 85.0279
+t = 32, nll = 84.9322
+t = 33, nll = 84.9111
+t = 34, nll = 84.7058
+t = 35, nll = 84.7516
+t = 36, nll = 84.3446
+t = 37, nll = 84.2801
+t = 38, nll = 84.2175
+t = 39, nll = 84.1027
+t = 40, nll = 84.0326
+t = 41, nll = 84.0405
+t = 42, nll = 83.8422
+t = 43, nll = 83.7827
+t = 44, nll = 83.6497
+t = 45, nll = 83.5218
+t = 46, nll = 83.5639
+t = 47, nll = 83.4362
+t = 48, nll = 83.4049
+t = 49, nll = 83.2688
+Training GMPS for digits 1
+Initially, nll = 61.8625
+t = 0, nll = 59.6911
+t = 1, nll = 56.5369
+t = 2, nll = 54.5661
+t = 3, nll = 53.2387
+t = 4, nll = 52.5607
+t = 5, nll = 51.5669
+t = 6, nll = 50.823
+t = 7, nll = 49.8762
+t = 8, nll = 49.5454
+t = 9, nll = 48.3204
+t = 10, nll = 47.594
+t = 11, nll = 46.4959
+t = 12, nll = 45.2943
+t = 13, nll = 44.8319
+t = 14, nll = 44.4427
+t = 15, nll = 43.9965
+t = 16, nll = 43.6764
+t = 17, nll = 43.1748
+t = 18, nll = 42.9045
+t = 19, nll = 42.4896
+t = 20, nll = 42.1899
+t = 21, nll = 42.1066
+t = 22, nll = 41.6427
+t = 23, nll = 41.6037
+t = 24, nll = 41.0042
+t = 25, nll = 40.7754
+t = 26, nll = 40.6011
+t = 27, nll = 40.6566
+t = 28, nll = 40.3898
+t = 29, nll = 40.2923
+t = 30, nll = 40.382
+t = 31, nll = 39.9954
+t = 32, nll = 39.6678
+t = 33, nll = 39.5803
+t = 34, nll = 39.5105
+t = 35, nll = 39.4875
+t = 36, nll = 39.4692
+t = 37, nll = 39.44
+t = 38, nll = 39.3826
+t = 39, nll = 39.4213
+t = 40, nll = 39.3599
+t = 41, nll = 39.2021
+t = 42, nll = 39.0134
+t = 43, nll = 38.8591
+t = 44, nll = 38.7581
+t = 45, nll = 38.7189
+t = 46, nll = 38.5892
+t = 47, nll = 38.3586
+t = 48, nll = 38.3568
+t = 49, nll = 38.1179
+Training GMPS for digits 0
+Initially, nll = 83.2688
+t = 0, nll = 83.5539
+t = 1, nll = 83.4644
+t = 2, nll = 83.2067
+t = 3, nll = 83.1719
+t = 4, nll = 83.1162
+Training GMPS for digits 1
+Initially, nll = 38.1179
+t = 0, nll = 38.3445
+t = 1, nll = 38.1155
+t = 2, nll = 38.0779
+t = 3, nll = 37.9431
+t = 4, nll = 37.6675
+Training GMPS for digits 0
+Initially, nll = 83.1162
+t = 0, nll = 83.2115
+t = 1, nll = 83.1763
+t = 2, nll = 83.1635
+t = 3, nll = 83.0898
+t = 4, nll = 83.028
+Training GMPS for digits 1
+Initially, nll = 37.6675
+t = 0, nll = 37.6795
+t = 1, nll = 37.5921
+t = 2, nll = 37.4051
+t = 3, nll = 37.3233
+t = 4, nll = 37.166
+Training GMPS for digits 0
+Initially, nll = 734.693
+t = 0, nll = 297.472
+Training GMPS for digits 0
+Training GMPS for digits 0
+Training GMPS for digits 0
+Initially, nll = 732.921
+Training GMPS for digits 0
+Initially, nll = 765.696
+Training GMPS for digits 0
+Initially, nll = 756.746
+Training GMPS for digits 0
+Initially, nll = 738.882
+Training GMPS for digits 0
+Initially, nll = 738.347
+Training GMPS for digits 0
+Initially, nll = 756.915
+t = 0, nll = 283.817
+t = 1, nll = 176.477
+t = 2, nll = 148.808
+t = 3, nll = 136.075
+t = 4, nll = 127.369
+Training GMPS for digits 1
+Initially, nll = 730.452
+t = 0, nll = 177.962
+t = 1, nll = 86.6217
+t = 2, nll = 69.9934
+t = 3, nll = 63.6658
+t = 4, nll = 58.8088
+Training GMPS for digits 0
+Initially, nll = 127.369
+t = 0, nll = 122.319
+t = 1, nll = 116.981
+t = 2, nll = 112.799
+t = 3, nll = 110.124
+t = 4, nll = 107.286
+Training GMPS for digits 1
+Initially, nll = 58.8088
+t = 0, nll = 55.674
+t = 1, nll = 54.0738
+t = 2, nll = 52.7276
+t = 3, nll = 51.7196
+t = 4, nll = 50.5394
+Training GMPS for digits 0
+Initially, nll = 107.286
+t = 0, nll = 104.938
+t = 1, nll = 102.466
+t = 2, nll = 100.391
+t = 3, nll = 99.005
+t = 4, nll = 97.5012
+Training GMPS for digits 1
+Initially, nll = 50.5394
+t = 0, nll = 50.4115
+t = 1, nll = 49.3608
+t = 2, nll = 48.5075
+t = 3, nll = 47.1726
+t = 4, nll = 46.0022
+Training GMPS for digits 0
+Initially, nll = 97.5012
+t = 0, nll = 96.7512
+t = 1, nll = 96.4173
+t = 2, nll = 95.8566
+t = 3, nll = 95.3478
+t = 4, nll = 94.9519
+Training GMPS for digits 1
+Initially, nll = 46.0022
+t = 0, nll = 44.9671
+t = 1, nll = 44.2099
+t = 2, nll = 43.7081
+t = 3, nll = 43.5735
+t = 4, nll = 43.1656
+Training GMPS for digits 0
+Initially, nll = 94.9519
+t = 0, nll = 94.4257
+t = 1, nll = 93.7601
+t = 2, nll = 93.1251
+t = 3, nll = 92.6682
+t = 4, nll = 92.572
+Training GMPS for digits 1
+Initially, nll = 43.1656
+t = 0, nll = 43.1139
+t = 1, nll = 42.7447
+t = 2, nll = 42.8247
+t = 3, nll = 41.9546
+t = 4, nll = 41.4142
+Training GMPS for digits 0
+Initially, nll = 92.572
+t = 0, nll = 92.0993
+t = 1, nll = 92.3289
+t = 2, nll = 91.8239
+t = 3, nll = 91.5179
+t = 4, nll = 91.037
+Training GMPS for digits 1
+Initially, nll = 41.4142
+t = 0, nll = 41.3489
+t = 1, nll = 41.1214
+t = 2, nll = 40.5104
+t = 3, nll = 40.2323
+t = 4, nll = 40.1746
+Training GMPS for digits 0
+Initially, nll = 91.037
+t = 0, nll = 91.2818
+t = 1, nll = 90.4698
+t = 2, nll = 89.6676
+t = 3, nll = 89.7908
+t = 4, nll = 88.943
+Training GMPS for digits 1
+Initially, nll = 40.1746
+t = 0, nll = 40.176
+t = 1, nll = 40.0191
+t = 2, nll = 39.5999
+t = 3, nll = 39.2028
+t = 4, nll = 38.7998
+Initially, nll = 755.95
+Initially, nll = 659.993
+t = 0, nll = 205.199
+t = 1, nll = 104.096
+t = 2, nll = 76.9475
+t = 3, nll = 63.8879
+t = 4, nll = 56.4703
+t = 5, nll = 53.0871
+t = 6, nll = 51.478
+t = 7, nll = 50.5824
+t = 8, nll = 50.1429
+t = 9, nll = 49.712
+t = 10, nll = 49.7374
+t = 11, nll = 49.0254
+t = 12, nll = 48.0412
+t = 13, nll = 47.5878
+t = 14, nll = 47.3183
+t = 15, nll = 47.135
+t = 16, nll = 47.0578
+t = 17, nll = 46.9948
+t = 18, nll = 46.9842
+t = 19, nll = 46.9645
+t = 20, nll = 46.9261
+t = 21, nll = 46.9659
+t = 22, nll = 46.911
+t = 23, nll = 46.8951
+t = 24, nll = 46.8715
+t = 25, nll = 46.8317
+t = 26, nll = 46.8215
+t = 27, nll = 46.8121
+t = 28, nll = 46.7467
+t = 29, nll = 46.7605
+t = 30, nll = 46.7416
+t = 31, nll = 46.7269
+t = 32, nll = 46.7182
+t = 33, nll = 46.7103
+t = 34, nll = 46.6716
+t = 35, nll = 46.6692
+t = 36, nll = 46.6871
+t = 37, nll = 46.6634
+t = 38, nll = 46.6558
+t = 39, nll = 46.6451
+t = 40, nll = 46.6481
+t = 41, nll = 46.6476
+t = 42, nll = 46.64
+t = 43, nll = 46.6472
+t = 44, nll = 46.6441
+t = 45, nll = 46.6352
+t = 46, nll = 46.6283
+t = 47, nll = 46.6273
+t = 48, nll = 46.6224
+t = 49, nll = 46.6257
+Initially, nll = 650.962
+t = 0, nll = 208.45
+t = 1, nll = 101.917
+t = 2, nll = 76.4456
+t = 3, nll = 64.1916
+t = 4, nll = 57.8884
+t = 5, nll = 54.5709
+t = 6, nll = 52.2792
+t = 7, nll = 50.9812
+t = 8, nll = 50.2294
+t = 9, nll = 49.368
+t = 10, nll = 49.0982
+t = 11, nll = 48.9064
+t = 12, nll = 48.7843
+t = 13, nll = 48.545
+t = 14, nll = 48.3679
+t = 15, nll = 47.8102
+t = 16, nll = 47.8276
+t = 17, nll = 47.5055
+t = 18, nll = 47.4599
+t = 19, nll = 47.373
+t = 20, nll = 47.2705
+t = 21, nll = 47.2214
+t = 22, nll = 47.1545
+t = 23, nll = 47.1649
+t = 24, nll = 47.0695
+t = 25, nll = 47.034
+t = 26, nll = 47.0201
+t = 27, nll = 47.0135
+t = 28, nll = 46.9579
+t = 29, nll = 46.9549
+t = 30, nll = 46.8819
+t = 31, nll = 46.8978
+t = 32, nll = 46.8849
+t = 33, nll = 46.8566
+t = 34, nll = 46.8888
+t = 35, nll = 46.8379
+t = 36, nll = 46.8085
+t = 37, nll = 46.7869
+t = 38, nll = 46.8023
+t = 39, nll = 46.8006
+t = 40, nll = 46.7641
+t = 41, nll = 46.75
+t = 42, nll = 46.7238
+t = 43, nll = 46.7898
+t = 44, nll = 46.7618
+t = 45, nll = 46.7408
+t = 46, nll = 46.6799
+t = 47, nll = 46.6671
+t = 48, nll = 46.6548
+t = 49, nll = 46.6575
+Initially, nll = 649.101
+t = 0, nll = 199.548
+t = 1, nll = 99.4018
+t = 2, nll = 75.8871
+Initially, nll = 650.148
+t = 0, nll = 220.992
+t = 1, nll = 108.623
+t = 2, nll = 80.1322
+t = 3, nll = 70.5056
+t = 4, nll = 61.9336
+t = 5, nll = 57.237
+t = 6, nll = 54.2422
+t = 7, nll = 52.3651
+t = 8, nll = 51.4131
+t = 9, nll = 50.7167
+t = 10, nll = 50.5037
+t = 11, nll = 50.1329
+t = 12, nll = 49.9321
+t = 13, nll = 49.8427
+t = 14, nll = 49.8375
+t = 15, nll = 49.467
+t = 16, nll = 49.4061
+t = 17, nll = 49.2496
+t = 18, nll = 49.2173
+t = 19, nll = 49.1306
+Initially, nll = 654.24
+t = 0, nll = 205.633
+t = 1, nll = 100.118
+t = 2, nll = 77.9186
+t = 3, nll = 63.7243
+t = 4, nll = 57.9307
+t = 5, nll = 53.9375
+t = 6, nll = 52.2865
+t = 7, nll = 51.5526
+t = 8, nll = 50.6064
+t = 9, nll = 50.2853
+t = 10, nll = 49.9373
+t = 11, nll = 49.6786
+t = 12, nll = 49.6545
+t = 13, nll = 49.3201
+t = 14, nll = 49.3528
+Initially, nll = 643.451
+t = 0, nll = 208.215
+t = 1, nll = 105.452
+t = 2, nll = 81.5648
+t = 3, nll = 68.3324
+t = 4, nll = 59.301
+t = 5, nll = 54.6313
+t = 6, nll = 51.8283
+t = 7, nll = 50.5483
+t = 8, nll = 49.8155
+t = 9, nll = 49.2204
+t = 10, nll = 49.0495
+t = 11, nll = 48.9967
+t = 12, nll = 48.7985
+t = 13, nll = 48.6017
+t = 14, nll = 48.4327
+Initially, nll = 664.872
+t = 0, nll = 205.861
+t = 1, nll = 100.614
+t = 2, nll = 76.7502
+t = 3, nll = 67.523
+t = 4, nll = 60.5777
+Initially, nll = 660.991
+t = 0, nll = 201.322
+t = 1, nll = 101.463
+t = 2, nll = 80.0183
+t = 3, nll = 69.2067
+t = 4, nll = 62.4339
+Initially, nll = 655.634
+t = 0, nll = 218.722
+t = 1, nll = 107.156
+t = 2, nll = 81.5969
+t = 3, nll = 69.3337
+t = 4, nll = 61.1422
+Initially, nll = 658.622
+t = 0, nll = 196.489
+t = 1, nll = 97.0334
+t = 2, nll = 74.2819
+t = 3, nll = 63.2576
+t = 4, nll = 58.5798
+Initially, nll = 665.517
+t = 0, nll = 216.532
+t = 1, nll = 110.867
+t = 2, nll = 87.2893
+t = 3, nll = 72.6678
+t = 4, nll = 64.4496
+Initially, nll = 648.289
+t = 0, nll = 212.272
+t = 1, nll = 109.165
+t = 2, nll = 80.9635
+t = 3, nll = 66.1282
+t = 4, nll = 59.1258
+Initially, nll = 666.217
+t = 0, nll = 208.429
+t = 1, nll = 105.717
+t = 2, nll = 79.3202
+t = 3, nll = 67.0391
+t = 4, nll = 59.5176
+Initially, nll = 667.343
+t = 0, nll = 222.315
+t = 1, nll = 117.983
+t = 2, nll = 89.7651
+t = 3, nll = 73.3351
+t = 4, nll = 61.9637
+Initially, nll = 646.309
+t = 0, nll = 215.528
+t = 1, nll = 108.262
+t = 2, nll = 78.174
+t = 3, nll = 65.6979
+t = 4, nll = 60.1869
+t = 5, nll = 57.0508
+t = 6, nll = 53.5272
+t = 7, nll = 52.1288
+t = 8, nll = 51.7182
+t = 9, nll = 50.1662

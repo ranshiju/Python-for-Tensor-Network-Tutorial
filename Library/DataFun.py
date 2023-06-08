@@ -19,12 +19,11 @@ def binarize_samples(samples):
 
 
 def choose_classes(data, labels, classes):
+    assert type(classes) in [tuple, list]
     shape = list(data.shape)
     data_ = list()
     labels_ = list()
     data = data.reshape(shape[0], -1)
-    if type(classes) is int:
-        classes = [classes]
     for n in range(len(classes)):
         data_.append(data[labels == classes[n]])
         labels_.append(tc.ones((
@@ -36,8 +35,7 @@ def choose_classes(data, labels, classes):
 
 
 def choose_classes_dataset(dataset, classes, re_tensor=False):
-    train_dataset = DataLoader(dataset, batch_size=dataset.data.shape[0], shuffle=False)
-    train_samples, train_lbs = next(iter(train_dataset))
+    train_samples, train_lbs = dataset2tensors(dataset)
     train_samples, train_lbs = choose_classes(train_samples, train_lbs, classes)
     if re_tensor:
         return train_samples, train_lbs
@@ -45,7 +43,21 @@ def choose_classes_dataset(dataset, classes, re_tensor=False):
         return TensorDataset(train_samples, train_lbs)
 
 
-def feature_map(samples, which='cossin', para=None, norm_p=2):
+def continuous_labels(classes, labels):
+    labels_new = tc.zeros(labels.shape, device=labels.device, dtype=labels.dtype)
+    for n in classes:
+        labels_new[labels == classes[n]] = n
+    return labels_new
+
+
+def dataset2tensors(dataset):
+    tmp = DataLoader(dataset, batch_size=dataset.__len__(), shuffle=False)
+    samples, labels = next(iter(tmp))
+    return samples, labels
+
+
+def feature_map(samples, which='cossin',
+                para=None, norm_p=2):
     if which is None:
         return samples
     which = which.lower()
@@ -58,7 +70,10 @@ def feature_map(samples, which='cossin', para=None, norm_p=2):
         'order0': 0  # 展开第0项为几阶
     }
     para = combine_dicts(para_, para)
-    samples = samples.reshape(-1, 1, samples[0].numel())
+    if samples.ndimension() == 1:
+        samples = samples.reshape(1, 1, -1)
+    else:
+        samples = samples.reshape(-1, 1, samples[0].numel())
     if which == '1x':
         which = 'power'
         para['d'] = 2
@@ -68,9 +83,12 @@ def feature_map(samples, which='cossin', para=None, norm_p=2):
     if which in ['cossin', 'cos-sin', 'cos_sin']:
         img1 = list()
         for dd in range(1, para['d']+1):
-            img1.append(math.sqrt(math.comb(para['d']-1, dd-1)) * tc.cos(
-                samples * para['theta'] * np.pi / 2) ** (para['d'] - dd) * tc.sin(
-                samples * para['theta'] * np.pi / 2) ** (dd - 1))
+            img1.append(math.sqrt(math.comb(
+                para['d']-1, dd-1)) * tc.cos(
+                samples * para['theta'] * np.pi / 2
+            ) ** (para['d'] - dd) * tc.sin(
+                samples * para['theta'] * np.pi / 2
+            ) ** (dd - 1))
         img1 = tc.cat(img1, dim=1)
         if norm_p == 1:
             img1 = img1 ** 2
@@ -91,11 +109,13 @@ def feature_map(samples, which='cossin', para=None, norm_p=2):
     elif which == 'power':
         if para['order0'] == 0:
             img_list = [tc.ones(
-                samples.shape, device=samples.device, dtype=samples.dtype)]
+                samples.shape, device=samples.device,
+                dtype=samples.dtype)]
             order0, order1 = 1, para['d']
         else:
             img_list = list()
-            order0, order1 = para['order0'], para['order0']+para['d']
+            order0, order1 = \
+                para['order0'], para['order0']+para['d']
         for dd in range(order0, order1):
             img_list.append(samples ** dd)
         return tc.cat(img_list, dim=1)
@@ -200,6 +220,25 @@ def load_iris(return_dict=False, return_tensor=True, device=None, dtype=tc.float
         return samples, targets
 
 
+def load_samples_mnist(which='mnist', num=1, pos=None, dataset_path=None, test=True, process=None):
+    trainset, testset = load_mnist(
+        which=which, dataset_path=dataset_path, test=test, process=process)
+    if test:
+        samples = dataset2tensors(testset)[0]
+    else:
+        samples = dataset2tensors(trainset)[0]
+    if type(pos) in [tuple, list]:
+        assert num == len(pos)
+        return samples[pos]
+    elif pos in ['random', None]:
+        ind = tc.randperm(samples.shape[0])[:num]
+        return samples[ind]
+    elif pos == 'first':
+        return samples[:num]
+    elif pos == 'last':
+        return samples[samples.shape[0]-num:]
+
+
 def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
     from torchvision import datasets, transforms
     preprocess = [transforms.ToTensor()]
@@ -235,6 +274,8 @@ def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
             test_dataset = datasets.FashionMNIST(root=dataset_path, train=False, transform=data_tf)
 
     if 'classes' in process:
+        if type(process['classes']) is int:
+            process['classes'] = list(range(process['classes']))
         train_dataset = choose_classes_dataset(train_dataset, process['classes'])
         if test:
             test_dataset = choose_classes_dataset(test_dataset, process['classes'])
@@ -300,26 +341,6 @@ def rescale_max_min_feature_wise(samples, maximum=1, minimum=0):
     samples_ = samples_ / samples_max
     samples_ = samples_ * (maximum - minimum) + minimum
     return samples_.reshape(s)
-
-
-# def select_samples_classes(samples, labels, classes, ndims=4, rearrange_labels=True):
-#     samples_list = list()
-#     labels_list = list()
-#     if type(classes) is int:
-#         classes = list(range(classes))
-#     for n, x in enumerate(classes):
-#         which = (labels == x)
-#         samples_list.append(samples[which])
-#         if rearrange_labels:
-#             labels_list.append(tc.ones(samples_list[-1].shape[0], ) * n)
-#         else:
-#             labels_list.append(labels[labels == x])
-#     samples_ = tc.cat(samples_list, dim=0)
-#     labels_ = tc.cat(labels_list, dim=0)
-#     if samples_.ndimension() == 3:
-#         if ndims == 4:
-#             samples_ = samples_.reshape((-1, 1) + samples_.shape[1:])
-#     return samples_, labels_
 
 
 def split_time_series(data, length, device=None, dtype=tc.float32):

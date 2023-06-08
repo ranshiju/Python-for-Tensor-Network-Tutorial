@@ -5,8 +5,8 @@ def super_diagonal_tensor(dim, order):
     """
     注：该函数已收录于MathFun模块
     :param dim: bond dimension
-    :param order: tensor order
-    :return: high-order super-orthogonal tensor
+    :param order: tensor order_g
+    :return: high-order_g super-orthogonal tensor
     """
     delta = tc.zeros([dim] * order, dtype=tc.float64)
     for n in range(dim):

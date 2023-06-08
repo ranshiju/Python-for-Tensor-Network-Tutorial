@@ -29,7 +29,7 @@ def act_N_qubit_QFT(psi, pos=None):
 def qubit_state_sampling(state, num_sample=1000, counter=True):
     """
     :param state: quantum state
-    :param num_sample: number of samples
+    :param num_sample: number of samples_v
     :param counter: whether counter
     :return: sampling results
     """

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 dim = 8  # matrix dimension
 lr = 2e-2  # learning rate
-it_time = 500  # total iteration time
+it_time = 500  # average iteration time
 
 mat = tc.randn((dim, dim), dtype=tc.float64)
 mat = (mat + mat.t()) / 2
