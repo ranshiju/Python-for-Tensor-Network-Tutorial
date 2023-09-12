@@ -10,10 +10,10 @@ coordinates = tc.zeros((it_time, 2), dtype=tc.float64)
 for t in range(it_time):
     y = x ** 2
     coordinates[t, 0] = x.data
-    coordinates[t, 1] = y.tensor
+    coordinates[t, 1] = y.data
     y.backward()
     x.data = x.data - lr * x.grad
-    x.grad.tensor.zero_()
+    x.grad.data.zero_()
 
 
 x = tc.tensor([1], dtype=tc.float64, requires_grad=True)
@@ -22,7 +22,7 @@ coordinates1 = tc.zeros((it_time, 2), dtype=tc.float64)
 for t in range(it_time):
     y = x ** 2
     coordinates1[t, 0] = x.data
-    coordinates1[t, 1] = y.tensor
+    coordinates1[t, 1] = y.data
     y.backward()
     optimizer.step()
     optimizer.zero_grad()
