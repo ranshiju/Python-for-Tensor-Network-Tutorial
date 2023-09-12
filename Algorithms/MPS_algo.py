@@ -212,14 +212,16 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
     return mps, para, info
 
 
-def GMPS_classification(trainset, testset, para=None, paraMPS=None):
+def GMPS_classification(trainset, testset,
+                        para=None, paraMPS=None):
     """
-    :param trainset: 训练集（张量形式，shape为num_sample * num_feature）
-    :param testset: 测试集（张量形式，shape为num_sample * num_feature）
+    :param trainset: 训练集（num_sample * num_feature的张量）
+    :param testset: 测试集（num_sample * num_feature张量）
     :param para: 算法参数
     :param paraMPS: MPS参数
     """
-    from Algorithms.wheels_gmps import gmps_save_name1, acc_from_saved_gmps
+    from Algorithms.wheels_gmps import \
+        gmps_save_name1, acc_from_saved_gmps
 
     if para is None:
         para = dict()
@@ -262,29 +264,40 @@ def GMPS_classification(trainset, testset, para=None, paraMPS=None):
     for digit in range(len(classes)):
         samples_now = samples[labels == classes[digit], :]
         if samples_now.numel() == 0:
-            print('Category %i has no samples_v; remove this category' % classes[digit])
+            print('Category %i has no samples_v; '
+                  'remove this category' % classes[digit])
         else:
-            fprint('Training GMPS for digits ' + str(classes[digit]), file=para['record'])
-            para['save_name'] = gmps_save_name1(classes[digit], paraMPS)
-            data = load(os.path.join(para['save_dir'], para['save_name']), ['tensors', 'paraMPS'])
+            fprint('Training GMPS for digits '
+                   + str(classes[digit]), file=para['record'])
+            para['save_name'] = gmps_save_name1(
+                classes[digit], paraMPS)
+            data = load(os.path.join(
+                para['save_dir'], para['save_name']),
+                ['tensors', 'paraMPS'])
             if type(data) is tuple:
                 tensors, paraMPS1 = data
             else:  # mps为GMPS类
                 tensors, paraMPS1 = data.tensors, data.para
-            compare_dicts(paraMPS, paraMPS1, 'paraMPS', 'loaded_paraMPS')
+            compare_dicts(paraMPS, paraMPS1,
+                          'paraMPS', 'loaded_paraMPS')
             if tensors is not None:
                 print('Load existing data...')
             else:
                 print('Train new GMPS ...')
-            GMPS_train(samples_now.to(device=para['device'], dtype=para['dtype']),
-                       tensors, para, paraMPS)
+            GMPS_train(samples_now.to(
+                device=para['device'], dtype=para['dtype']),
+                tensors, para, paraMPS)
             tc.cuda.empty_cache()
-    acc_train = acc_from_saved_gmps(samples, labels, para, paraMPS)
-    acc_test = acc_from_saved_gmps(samples_t, labels_t, para, paraMPS)
-    print('Train accuracy = %g, test accuracy = %g' % (acc_train, acc_test))
+    acc_train = acc_from_saved_gmps(
+        samples, labels, para, paraMPS)
+    acc_test = acc_from_saved_gmps(
+        samples_t, labels_t, para, paraMPS)
+    print('Train accuracy = %g, test accuracy = %g'
+          % (acc_train, acc_test))
 
 
-def generate_sample_by_gmps(mps, sample=None, order_g=None, paraG=None):
+def generate_sample_by_gmps(
+        mps, sample=None, order_g=None, paraG=None):
     from random import choices
 
     if paraG is None:
@@ -313,24 +326,30 @@ def generate_sample_by_gmps(mps, sample=None, order_g=None, paraG=None):
     order_g = np.array(order_g)
 
     if sample is None:
-        sample = tc.zeros(len(mps.tensors), device=mps.device, dtype=mps.dtype)
+        sample = tc.zeros(len(mps.tensors),
+                          device=mps.device, dtype=mps.dtype)
     else:
-        sample = sample.clone().to(device=mps.device, dtype=mps.dtype)
+        sample = sample.clone().to(
+            device=mps.device, dtype=mps.dtype)
         order_p = list(range(sample.numel()))
         for x in order_g:
             order_p.remove(x.item())
-        sample_v = df.feature_map(sample[order_p], mps.para['feature_map'],
-                                  para={'d': mps.para['d'], 'theta': mps.para['theta']})
+        sample_v = df.feature_map(
+            sample[order_p], mps.para['feature_map'],
+            para={'d': mps.para['d'],
+                  'theta': mps.para['theta']})
         mps.project_multi_qubits(order_p, sample_v[0])
 
     order_gn = np.argsort(np.argsort(order_g))
     if (paraG['way'] == 'single') or (paraG['num_s'] == 1):
         pos = 0
         while len(order_gn) > 0:
-            mps.center_orthogonalization(c=order_gn[0], way='qr', normalize=True)
+            mps.center_orthogonalization(
+                c=order_gn[0], way='qr', normalize=True)
             rho = mps.one_body_RDM(order_gn[0])
             lm = rho.diag()
-            state = choices([0, 1], (lm/lm.sum()).cpu().numpy(), k=1)[0]
+            state = choices([0, 1], (
+                    lm).cpu().numpy(), k=1)[0]
             sample[order_g[pos]] = state
             mps.project_qubit_nt(order_gn[0], state)
             mps.center = max(0, mps.center-1)
@@ -339,7 +358,9 @@ def generate_sample_by_gmps(mps, sample=None, order_g=None, paraG=None):
             order_gn = order_gn[1:]
             pos += 1
     else:
-        sample_g = tc.zeros(sample.shape, device=sample.device, dtype=sample.dtype)
+        sample_g = tc.zeros(
+            sample.shape,
+            device=sample.device, dtype=sample.dtype)
         for ns in range(paraG['num_s']):
             sample_ = sample.clone()
             mps1 = generative_MPS(mps.tensors, mps.para)
@@ -347,10 +368,13 @@ def generate_sample_by_gmps(mps, sample=None, order_g=None, paraG=None):
             order_gn1 = copy.deepcopy(order_gn)
             pos = 0
             while len(order_gn1) > 0:
-                mps1.center_orthogonalization(c=order_gn1[0], way='qr', normalize=True)
+                mps1.center_orthogonalization(
+                    c=order_gn1[0], way='qr', normalize=True)
                 rho = mps1.one_body_RDM(order_gn1[0])
                 lm = rho.diag()
-                state = choices([0, 1], (lm / lm.sum()).cpu().numpy(), k=1)[0]
+                state = choices(
+                    [0, 1], (lm / lm.sum()).cpu().numpy(),
+                    k=1)[0]
                 sample_[order_g[pos]] = state
                 mps1.project_qubit_nt(order_gn1[0], state)
                 mps1.center = max(0, mps1.center - 1)

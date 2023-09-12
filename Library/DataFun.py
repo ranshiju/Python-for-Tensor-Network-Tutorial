@@ -100,7 +100,7 @@ def feature_map(samples, which='cossin',
             samples, norm_p=norm_p, d=para['d'], alpha=para['alpha'])
     elif which in ['square-linear', 'square_linear', 'squarelinear',
                    'normalized-linear', 'normalized_linear', 'normalizedlinear']:
-        img1 = tc.cat([tc.sqrt(tc.abs(samples)), tc.sqrt(tc.abs(1 - samples))], dim=1)
+        img1 = tc.cat([tc.sqrt(tc.abs(samples)), tc.sqrt(1 - tc.abs(samples))], dim=1)
         if norm_p == 1:
             img1 = img1 ** 2
         return img1
