@@ -3,7 +3,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 
-M = cv2.imread('../data/images/img1.jpg')
+M = cv2.imread('../samples/images/img1.jpg')
 print('type(x) = ', type(M))
 print('X.shape = ', M.shape)
 print('对于灰度图，三个通道的取值相等:')

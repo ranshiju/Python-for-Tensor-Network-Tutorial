@@ -5,7 +5,7 @@ v = tc.randn(4)
 
 z1 = u.dot(v)
 z2 = u.inner(v)
-z3 = tc.einsum('n,n->', u, v)
+z3 = tc.einsum('digit,digit->', u, v)
 print('三种方法计算的向量内积结果：', z1, z2, z3)
 
 z4 = 0

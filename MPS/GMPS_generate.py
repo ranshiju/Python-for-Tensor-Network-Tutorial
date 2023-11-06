@@ -5,7 +5,7 @@ from Algorithms.MPS_algo import generate_sample_by_gmps
 
 '''
 下述示例用到的GMPS数据可从百度云盘下载：
-https://pan.baidu.com/s/1xGZsHy9plpL6-3AZsBGqZA?pwd=TNML 
+https://pan.baidu.com/s/1LnbcWDRm3YODcSGnc3RZ_A 
 提取码: TNML
 '''
 

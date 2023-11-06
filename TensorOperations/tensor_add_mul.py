@@ -15,7 +15,7 @@ print('\n向量外积outer = \n', u.outer(v))
 print('向量外积einsum = \n', tc.einsum('a,b->ab', u, v))
 
 print('\n向量kron          = ', tc.kron(u, v))
-print('向量kron (einsum) = ', tc.einsum('m,n->mn', u, v).reshape(-1, ))
+print('向量kron (einsum) = ', tc.einsum('m,digit->mn', u, v).reshape(-1, ))
 
 m1 = tc.randn(2, 2)
 m2 = tc.randn(2, 2)

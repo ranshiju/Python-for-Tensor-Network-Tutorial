@@ -20,7 +20,7 @@ V = tc.randn((2, 2), dtype=tc.float64)
 W = tc.randn((2, 2), dtype=tc.float64)
 gamma = tc.randn(2, dtype=tc.float64)
 
-T1 = tc.einsum('n,an,bn,cn->abc', gamma, U, V, W)
+T1 = tc.einsum('digit,an,bn,cn->abc', gamma, U, V, W)
 
 d = super_diagonal_tensor(2, 4)
 T2 = tc.einsum('i,aj,bk,cl,ijkl->abc', gamma, U, V, W, d)
