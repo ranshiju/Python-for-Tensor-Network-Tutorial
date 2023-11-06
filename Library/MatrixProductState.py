@@ -12,6 +12,8 @@ class MPS_basic:
         self.para = dict()
         self.input_paras(para)
         self.center = -1  # 正交中心（-1代表不具有正交中心）
+
+        self.eps = self.para['eps']
         self.device = bf.choose_device(self.para['device'])
         self.dtype = self.para['dtype']
         if tensors is None:
@@ -29,6 +31,7 @@ class MPS_basic:
             'd': 2,
             'chi': 3,
             'boundary': 'open',
+            'eps': 0,
             'device': None,
             'dtype': tc.float64
         }
@@ -37,8 +40,39 @@ class MPS_basic:
         else:
             self.para = dict(para0, **para)
 
+    def add_mps_vecs(self, vecs, factors=1.0):
+        # MPS is with open boundary condition
+        # vecs.shape = (num_samples, d, num_qubits)
+        assert self.para['boundary'] == 'open'
+        tensors1 = from_vecs_to_mps(vecs, factors=factors)
+        s = self.tensors[0].shape
+        x1 = tc.zeros((1, s[1], s[2] + tensors1[0].shape[-1]),
+                      dtype=self.tensors[0].dtype,
+                      device=self.tensors[0].device)
+        x1[0, :, :s[2]] = self.tensors[0]
+        x1[0, :, s[2]:] = tensors1[0][0, :, :]
+        self.tensors[0] = x1
+        for n in range(1, len(self.tensors) - 1):
+            s = self.tensors[n].shape
+            x1 = tc.zeros((s[0] + tensors1[n].shape[0], s[1],
+                           s[2] + tensors1[n].shape[2]),
+                          dtype=self.tensors[n].dtype,
+                          device=self.tensors[n].device)
+            x1[:s[0], :, :s[2]] = self.tensors[n]
+            x1[s[0]:, :, s[2]:] = tensors1[n]
+            self.tensors[n] = x1
+        s = self.tensors[-1].shape
+        x1 = tc.zeros((s[0] + tensors1[-1].shape[0], s[1], 1),
+                      dtype=self.tensors[-1].dtype,
+                      device=self.tensors[-1].device)
+        x1[:s[0], :, :1] = self.tensors[-1]
+        x1[s[0]:, :, :1] = tensors1[-1]
+        self.tensors[-1] = x1
+        self.center = -1
+
     def correct_device(self):
         self.device = bf.choose_device(self.device)
+        self.to()
 
     def clone_tensors(self):
         self.tensors = [x.clone() for x in self.tensors]
@@ -75,6 +109,31 @@ class MPS_basic:
         else:
             err = check_center_orthogonality(self.tensors, self.center, prt=prt)
             return err
+
+    def check_virtual_dims(self):
+        for n in range(len(self.tensors)-1):
+            assert self.tensors[n].shape[-1] == self.tensors[n+1].shape[0]
+        assert self.tensors[0].shape[0] == self.tensors[-1].shape[-1]
+
+    def entanglement_ent_onsite(self, which=None, eps=None):
+        if which in [None, 'all']:
+            which = list(range(len(self.tensors)))
+        if eps is None:
+            eps = self.eps
+        if type(which) is int:
+            which = [which]
+        ent = tc.zeros(len(which), device=self.device, dtype=self.dtype)
+        for n, nc in enumerate(which):
+            self.center_orthogonalization(nc)
+            rho = self.one_body_RDM(self.center)
+            lm = tc.linalg.eigvalsh(rho)
+            lm /= lm.sum()
+            ent[n] = -tc.inner(lm, tc.log(lm+eps))
+        return ent
+
+    def find_max_virtual_dim(self):
+        dims = [x.shape[0] for x in self.tensors]
+        return max(dims)
 
     def full_tensor(self):
         return full_tensor(self.tensors)
@@ -180,14 +239,16 @@ class MPS_basic:
                                      full_matrices=False)
             lm = lm.to(dtype=u.dtype)
             if if_trun:
-                u = u[:, :dc].to(self.device)
-                r = tc.diag(lm[:dc]).to(self.device).mm(v[:dc, :].to(self.device))
+                u = u[:, :dc].to(device=self.device)
+                r = tc.diag(lm[:dc]).to(device=self.device).mm(
+                    v[:dc, :].to(device=self.device))
             else:
-                r = tc.diag(lm).to(self.device).mm(v.to(self.device))
+                u = u.to(device=self.device)
+                r = tc.diag(lm).to(device=self.device).mm(v.to(device=self.device))
         else:
             u, r = tc.linalg.qr(tensor)
             lm = None
-            u, r = u.to(self.device), r.to(self.device)
+            u, r = u.to(device=self.device), r.to(device=self.device)
         self.tensors[nt] = u.reshape(s[0], s[1], -1)
         if normalize:
             r /= tc.norm(r)
@@ -211,25 +272,26 @@ class MPS_basic:
             u, lm, v = tc.linalg.svd(tensor, full_matrices=False)
             lm = lm.to(dtype=u.dtype)
             if if_trun:
-                u = u[:, :dc].to(self.device)
-                r = tc.diag(lm[:dc]).to(self.device).mm(v[:dc, :].to(self.device))
+                u = u[:, :dc].to(device=self.device)
+                r = tc.diag(lm[:dc]).to(device=self.device).mm(v[:dc, :].to(self.device))
             else:
-                r = tc.diag(lm).to(self.device).mm(v.to(self.device))
+                u = u.to(device=self.device)
+                r = tc.diag(lm).to(device=self.device).mm(v.to(device=self.device))
         else:
             u, r = tc.linalg.qr(tensor)
             lm = None
-            u, r = u.to(self.device), r.to(self.device)
+            u, r = u.to(device=self.device), r.to(device=self.device)
         self.tensors[nt] = u.t().reshape(-1, s[1], s[2])
         if normalize:
             r /= tc.norm(r)
-        self.tensors[nt-1] = tc.tensordot(self.tensors[nt-1], r, [[2], [1]])
+        self.tensors[nt - 1] = tc.tensordot(self.tensors[nt - 1], r, [[2], [1]])
         return lm
 
     def orthogonalize_n1_n2(self, n1, n2, way, dc, normalize):
         if n1 < n2:
             for nt in range(n1, n2, 1):
                 self.orthogonalize_left2right(nt, way, dc, normalize)
-        else:
+        elif n1 > n2:
             for nt in range(n1, n2, -1):
                 self.orthogonalize_right2left(nt, way, dc, normalize)
 
@@ -484,9 +546,9 @@ class generative_MPS(MPS_basic):
         self.vecsL = None
         self.vecsR = None
         self.norms = tc.ones(1)
-        self.eps = para['eps']
         self.para = copy.deepcopy(para)
         self.combine_default_para()
+        self.eps = self.para['eps']
 
     def clear_memory(self):
         self.samples_v = None
@@ -501,14 +563,14 @@ class generative_MPS(MPS_basic):
             'chi': 3,
             'boundary': 'open',
             'feature_map': 'cossin',
-            'eps': 1e-14,
+            'eps': 0,
             'theta': 1.0,
             'device': bf.choose_device(),
             'dtype': tc.float64
         }
         self.para = dict(para, **self.para)
 
-    def evaluate_nll(self, samples=None, average=False):
+    def evaluate_nll(self, samples=None, average=False, update_vecs=True):
         if samples is not None:
             if samples.ndimension() == 2:
                 samples_v = df.feature_map(
@@ -518,7 +580,79 @@ class generative_MPS(MPS_basic):
                 assert samples.ndimension() == 3
                 samples_v = samples
             self.input_samples_v(samples_v)
-        self.initialize_vecs_norms()
+        if update_vecs:
+            center = max(0, self.center)
+            self.initialize_vecs_norms()
+            for n in range(center):
+                self.update_vecsL_n(n)
+            for n in range(len(self.tensors) - 1, center, -1):
+                self.update_vecsR_n(n)
+            self.update_norms_center(center)
+        else:  # 避免inplace操作
+            vl = tc.ones((samples.shape[0], 1), device=self.device, dtype=self.dtype)
+            vr = tc.ones((samples.shape[0], 1), device=self.device, dtype=self.dtype)
+            self.norms = tc.ones(
+                (samples.shape[0], len(self.tensors)),
+                device=self.device, dtype=self.dtype)
+            center = max(0, self.center)
+            for n in range(center):
+                vl = tc.einsum('na,nb,abc->nc', vl,
+                               self.samples_v[:, :, n], self.tensors[n])
+                self.norms[:, n] = vl.norm(dim=1)
+                vl = tc.einsum(
+                    'na,n->na', vl,
+                    1 / (self.norms[:, n] + self.eps))
+            for n in range(len(self.tensors) - 1, center, -1):
+                vr = tc.einsum(
+                    'nc,nb,abc->na', vr,
+                    self.samples_v[:, :, n], self.tensors[n])
+                self.norms[:, n] = vr.norm(dim=1)
+                vr = tc.einsum(
+                    'na,n->na', vr,
+                    1 / (self.norms[:, n] + self.eps))
+            self.norms[:, center] = tc.einsum(
+                'apb,na,np,nb->n', self.tensors[center], vl,
+                self.samples_v[:, :, center], vr)
+        nll = self.evaluate_nll_from_norms(average=average)
+        return nll
+
+    def evaluate_nll_selected_features(self, samples_v, pos, average=False):
+        # 注：samples_v包含所有特征，不是选出来的特征
+        assert samples_v.shape[2] == len(self.tensors)
+        assert type(pos) in [list, tuple, tc.Tensor]
+        vl = tc.ones((samples_v.shape[0], 1, 1), device=self.device, dtype=self.dtype)
+        vr = tc.ones((samples_v.shape[0], 1, 1), device=self.device, dtype=self.dtype)
+        self.norms = tc.ones((samples_v.shape[0], len(self.tensors)),
+                             device=self.device, dtype=self.dtype)
+        center = max(0, self.center)
+        for n in range(center):
+            if n in pos:
+                mat = tc.einsum('asb,ns->nab', self.tensors[n], samples_v[:, :, n])
+                vl = tc.einsum('nab,nac,ncd->nbd', mat.conj(), vl, mat)
+            else:
+                vl = tc.einsum('asb,csd,nac->nbd', self.tensors[n].conj(), self.tensors[n], vl)
+            self.norms[:, n] = vl.reshape(vl.shape[0], -1).norm(dim=1)
+            vl = tc.einsum(
+                'nab,n->nab', vl,
+                1 / (self.norms[:, n] + self.eps))
+        for n in range(self.para['length'] - 1, center, -1):
+            if n in pos:
+                mat = tc.einsum('asb,ns->nab', self.tensors[n], samples_v[:, :, n])
+                vr = tc.einsum('nab,nbd,ncd->nac', mat.conj(), vr, mat)
+            else:
+                vr = tc.einsum('asb,csd,nbd->nac', self.tensors[n].conj(), self.tensors[n], vr)
+            self.norms[:, n] = vr.reshape(vr.shape[0], -1).norm(dim=1)
+            vr = tc.einsum(
+                'nab,n->nab', vr,
+                1 / (self.norms[:, n] + self.eps))
+        if center in pos:
+            mat = tc.einsum('asb,ns->nab', self.tensors[center], samples_v[:, :, center])
+            self.norms[:, center] = tc.einsum(
+                'nab,nac,ncd,nbd->n', mat.conj(), vl, mat, vr).abs()
+        else:
+            self.norms[:, center] = tc.einsum(
+                'asb,csd,nac,nbd->n', self.tensors[center].conj(),
+                self.tensors[center], vl, vr).abs()
         nll = self.evaluate_nll_from_norms(average=average)
         return nll
 
@@ -529,6 +663,11 @@ class generative_MPS(MPS_basic):
         else:
             return - 2 * tc.log(self.norms.abs() + self.eps
                                 ).sum(dim=1)
+
+    def feature_selection_OEE(self, num, ent=None):
+        if ent is None:
+            ent = self.entanglement_ent_onsite(which='all')
+        return tc.sort(ent, descending=True)[1][:num]
 
     def grad_update_MPS_tensor_by_env(self, lr, way='tsgo'):
         env = self.obtain_env_center()
@@ -543,20 +682,22 @@ class generative_MPS(MPS_basic):
 
     def initialize_vecs_norms(self):
         num_f = self.samples_v.shape[0]
+        chi = self.find_max_virtual_dim()
         self.norms = tc.ones(
-            (num_f, self.para['length']),
-            device=self.para['device'], dtype=self.para['dtype'])
+            (num_f, len(self.tensors)),
+            device=self.device, dtype=self.dtype)
         self.vecsL = tc.ones(
-            (num_f, self.para['chi'], self.para['length']),
-            device=self.para['device'], dtype=self.para['dtype'])
+            (num_f, chi, len(self.tensors)),
+            device=self.device, dtype=self.dtype)
         self.vecsR = tc.ones(
-            (num_f, self.para['chi'], self.para['length']),
-            device=self.para['device'], dtype=self.para['dtype'])
-        for n in range(self.center):
+            (num_f, chi, len(self.tensors)),
+            device=self.device, dtype=self.dtype)
+        center = max(0, self.center)
+        for n in range(center):
             self.update_vecsL_n(n)
-        for n in range(self.para['length'] - 1, self.center, -1):
+        for n in range(len(self.tensors) - 1, center, -1):
             self.update_vecsR_n(n)
-        self.update_norms_center()
+        self.update_norms_center(center)
 
     def input_samples_v(self, samples_v):
         self.samples_v = samples_v.to(device=self.device, dtype=self.dtype)
@@ -580,11 +721,13 @@ class generative_MPS(MPS_basic):
             env, 1 / c_env) / c_env.numel()
         return env
 
-    def update_norms_center(self):
-        s = self.tensors[self.center].shape
-        self.norms[:, self.center] = tc.einsum(
-            'apb,na,np,nb->n', self.tensors[self.center], self.vecsL[:, :s[0], self.center],
-            self.samples_v[:, :, self.center], self.vecsR[:, :s[2], self.center])
+    def update_norms_center(self, center=None):
+        if center is None:
+            center = self.center
+        s = self.tensors[center].shape
+        self.norms[:, center] = tc.einsum(
+            'apb,na,np,nb->n', self.tensors[center], self.vecsL[:, :s[0], center],
+            self.samples_v[:, :, center], self.vecsR[:, :s[2], center])
 
     def update_para(self, para):
         self.para = dict(self.para, **para)
@@ -653,6 +796,23 @@ def check_center_orthogonality(tensors, center, prt=False):
     return err
 
 
+def evaluate_nll(mps, samples=None, average=False):
+    if type(mps) in [tuple, list]:
+        mps = generative_MPS(mps[0], mps[1])
+    if samples is not None:
+        if samples.ndimension() == 2:
+            samples_v = df.feature_map(
+                samples, mps.para['feature_map'],
+                {'d': mps.para['d'], 'theta': mps.para['theta']})
+        else:
+            assert samples.ndimension() == 3
+            samples_v = samples
+        mps.input_samples_v(samples_v)
+    mps.initialize_vecs_norms()
+    nll = mps.evaluate_nll_from_norms(average=average)
+    return nll
+
+
 def full_tensor(tensors):
     # 注：要求每个张量第0个指标为左虚拟指标，最后一个指标为右虚拟指标
     psi = tensors[0]
@@ -666,6 +826,29 @@ def full_tensor(tensors):
     else:
         psi = psi.squeeze()
     return psi
+
+
+def from_vecs_to_mps(vecs, factors=1.0):
+    if vecs.ndimension() == 2:  # vecs.shape = (d,num_qubits)
+        vecs[:, 0] = vecs[:, 0] * factors
+        return [vecs[:, n].reshape(1, vecs.shape[0], 1) for n in range(vecs.shape[1])]
+    else:  # vecs.shape = (num_samples, d, num_qubits)
+        assert vecs.ndimension() == 3
+        num_s, d, num_q = vecs.shape
+        if type(factors) not in [tc.Tensor, tc.nn.parameter.Parameter]:
+            factors = tc.tensor(factors, device=vecs.device, dtype=vecs.dtype)
+        if factors.numel() == 1:
+            tensors = [(vecs[:, :, 0].t() * factors).reshape(1, d, num_s)]
+        else:
+            assert factors.numel() == num_s
+            tensors = [tc.einsum('nd,n->dn', vecs[:, :, 0], factors).reshape(1, d, num_s)]
+        for n in range(1, num_q-1):
+            x = tc.zeros((num_s, d, num_s), device=vecs.device, dtype=vecs.dtype)
+            for s in range(d):
+                x[:, s, :] = tc.diag(vecs[:, s, n])
+            tensors.append(x)
+        tensors.append(vecs[:, :, -1].reshape(num_s, d, 1))
+        return tensors
 
 
 def inner_product(tensors0, tensors1, form='log'):

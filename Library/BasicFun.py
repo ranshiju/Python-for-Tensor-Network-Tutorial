@@ -114,11 +114,14 @@ def list_eq2einsum_eq(eq):
     return eq_str + ''.join(tmp)
 
 
-def load(path_file, names=None, device='cpu'):
+def load(path_file, names=None, device='cpu', return_tuple=True):
     if os.path.isfile(path_file):
         if names is None:
-            data = tc.load(path_file)
-            return data
+            data = tc.load(path_file, map_location=device)
+            if return_tuple:
+                return tuple(data[x] for x in data)
+            else:
+                return data
         else:
             tmp = tc.load(path_file, map_location=device)
             if type(names) is str:
@@ -187,6 +190,19 @@ def print_dict(a, keys=None, welcome='', style_sep=': ', end='\n', file=None, pr
     return express
 
 
+def plot_multi_imgs(imgs, num_rows=1):
+    # imgs.shape = (num_img, size0, size1)
+    if type(imgs) is tc.Tensor:
+        imgs = imgs.cpu().numpy()
+    num = imgs.shape[0]
+    fig = plt.figure()
+    num_col = math.ceil(num / num_rows)
+    for n in range(num):
+        ax = fig.add_subplot(num_rows, num_col, n+1)
+        ax.imshow(imgs[n])
+    plt.show()
+
+
 def print_progress_bar(n_current, n_total, message=''):
     x1 = math.floor(n_current / n_total * 10)
     x2 = math.floor(n_current / n_total * 100) % 10
@@ -236,7 +252,8 @@ def search_file(path, exp):
     return result
 
 
-def show_multiple_images(imgs, lxy=None, titles=None, save_name=None, show=True, cmap=None):
+def show_multiple_images(imgs, lxy=None, titles=None, save_name=None,
+                         show=True, cmap='hot', img_size=None):
     if cmap is None:
         cmap = plt.cm.gray
     ni = len(imgs)
@@ -253,6 +270,8 @@ def show_multiple_images(imgs, lxy=None, titles=None, save_name=None, show=True,
             tmp = imgs[n].cpu().numpy()
         else:
             tmp = imgs[n]
+        if img_size is not None:
+            tmp = tmp.reshape(img_size)
         if tmp.ndim == 2:
             plt.imshow(tmp, cmap=cmap)
         else:
@@ -262,6 +281,7 @@ def show_multiple_images(imgs, lxy=None, titles=None, save_name=None, show=True,
         plt.axis('off')
         plt.xticks([])
         plt.yticks([])
+    # plt.colorbar()
     if type(save_name) is str:
         plt.savefig(save_name)
     if show:

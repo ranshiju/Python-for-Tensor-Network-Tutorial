@@ -12,7 +12,7 @@ from Library.QuantumTools import vecs2product_state
 def ADQC_classifier(trainloader, testloader, num_classes,
                     length, para=None):
     para0 = dict()  # 默认参数
-    para0['batch_size'] = 200  # 批次大小
+    para0['n_img'] = 200  # 批次大小
     para0['feature_map'] = 'cossin'  # 特征映射
     para0['lattice'] = 'brick'  # ADQC链接形式（brick或stair）
     para0['depth'] = 4  # ADQC层数
@@ -99,7 +99,7 @@ def ADQC_predict_time_series(data, para=None):
     para0 = dict()  # 默认参数
     para0['test_ratio'] = 0.2  # 将部分样本划为测试集
     para0['length'] = 4  # 数据样本维数
-    para0['batch_size'] = 200  # 批次大小
+    para0['n_img'] = 200  # 批次大小
     para0['feature_map'] = 'cossin'  # 特征映射
     para0['lattice'] = 'brick'  # ADQC链接形式（brick或stair）
     para0['depth'] = 4  # ADQC层数
@@ -123,8 +123,8 @@ def ADQC_predict_time_series(data, para=None):
         data[num_train-para['length']:], para['length'], para['device'], para['dtype'])
     trainset = feature_map(trainset, which=para['feature_map'])
     testset = feature_map(testset, which=para['feature_map'])
-    trainloader = DataLoader(TensorDataset(trainset, train_lbs), batch_size=para['batch_size'], shuffle=True)
-    testloader = DataLoader(TensorDataset(testset, test_lbs), batch_size=para['batch_size'], shuffle=False)
+    trainloader = DataLoader(TensorDataset(trainset, train_lbs), batch_size=para['n_img'], shuffle=True)
+    testloader = DataLoader(TensorDataset(testset, test_lbs), batch_size=para['n_img'], shuffle=False)
 
     qc = ADQC_LatentGates(lattice=para['lattice'], num_q=para['length'], depth=para['depth'], ini_way=para['ini_way'],
                           device=para['device'], dtype=para['dtype'])
@@ -179,7 +179,7 @@ def QRNN_predict_time_series(data, para=None):
     para0 = dict()  # 默认参数
     para0['test_ratio'] = 0.2  # 将部分样本划为测试集
     para0['length'] = 4  # 数据样本维数
-    para0['batch_size'] = 200  # 批次大小
+    para0['n_img'] = 200  # 批次大小
     para0['feature_map'] = 'cossin'  # 特征映射
     para0['ancillary_length'] = 4  # 辅助量子位数
     para0['unitary'] = True  # 是否要求局域张量幺正
@@ -205,8 +205,8 @@ def QRNN_predict_time_series(data, para=None):
         data[num_train-para['length']:], para['length'], para['device'], para['dtype'])
     trainset = feature_map(trainset, which=para['feature_map'])
     testset = feature_map(testset, which=para['feature_map'])
-    trainloader = DataLoader(TensorDataset(trainset, train_lbs), batch_size=para['batch_size'], shuffle=True)
-    testloader = DataLoader(TensorDataset(testset, test_lbs), batch_size=para['batch_size'], shuffle=False)
+    trainloader = DataLoader(TensorDataset(trainset, train_lbs), batch_size=para['n_img'], shuffle=True)
+    testloader = DataLoader(TensorDataset(testset, test_lbs), batch_size=para['n_img'], shuffle=False)
 
     if para['lattice'] is None:
         pos = [[m, para['ancillary_length']] for m in range(para['ancillary_length']-1, -1, -1)]
@@ -259,7 +259,7 @@ def probability_0_of_qubit_last(states):
     # states.shape = (量子态个数, 2, 2, 2, ...)
     s = states.shape
     states = states.reshape(-1, s[-1])[:, 0].reshape(s[0], -1)
-    return tc.einsum('na,na->n', states, states.conj())
+    return tc.einsum('na,na->digit', states, states.conj())
 
 
 def probabilities_adqc_classifier(psi, num_qc, num_class):
@@ -270,5 +270,5 @@ def probabilities_adqc_classifier(psi, num_qc, num_class):
                  device=psi.device, dtype=psi1.dtype)
     for n in range(num_class):
         p[:, n] = psi1[:, n, n]
-    p = tc.einsum('na,n->na', p, 1/(tc.norm(p, dim=1)+1e-10))
+    p = tc.einsum('na,digit->na', p, 1/(tc.norm(p, dim=1)+1e-10))
     return p

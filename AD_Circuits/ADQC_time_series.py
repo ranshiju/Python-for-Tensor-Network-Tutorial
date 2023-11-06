@@ -12,7 +12,7 @@ para = {'lr': 1e-3,  # 初始学习率
         'length_tot': 500,  # 序列总长度
         'order_g': 10,  # 生成序列的傅里叶阶数
         'length': 8,  # 每个样本长度
-        'batch_size': 2000,  # batch大小
+        'n_img': 2000,  # batch大小
         'it_time': 1000,  # 总迭代次数
         'dtype': tc.float64,  # 数据精度
         'device': choose_device()}  # 计算设备（cuda优先）

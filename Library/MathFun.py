@@ -48,6 +48,72 @@ def kron(mats):
     return mat
 
 
+def metric_euclidean(samples, samples_ref, p=2):
+    samples = samples.reshape(samples.shape[0], -1)
+    samples_ref = samples_ref.reshape(samples_ref.shape[0], -1)
+    metric = tc.ones((samples.shape[0], samples_ref.shape[0]),
+                     device=samples.device, dtype=samples.dtype)
+    for n in range(samples.shape[0]):
+        tmp = samples[n, :].repeat(
+            samples_ref.shape[0], 1) - samples_ref
+        metric[n, :] = tmp.norm(p=p, dim=1)
+    return metric.sum(dim=1) / samples_ref.shape[0]
+
+
+def metric_matrix_neg_log_cos_sin(samples, theta=np.pi/2-1e-10):
+    samples = samples.reshape(samples.shape[0], -1)
+    metric = tc.ones((samples.shape[0], samples.shape[0]),
+                     device=samples.device, dtype=samples.dtype)
+    for n in range(samples.shape[0]-1):
+        tmp = samples[n, :].repeat(
+            samples.shape[0]-n-1, 1) - samples[n+1:, :]
+        tmp = tc.cos(tmp * theta)
+        tmp = (-1) * tc.log(tmp).sum(dim=1) / tmp.shape[1]
+        metric[n, n+1:] = tmp
+        metric[n+1:, n] = tmp
+    return metric
+
+
+def metric_neg_log_cos_sin(samples, samples_ref, theta=np.pi/2-1e-10, average=True):
+    samples = samples.reshape(samples.shape[0], -1)
+    samples_ref = samples_ref.reshape(samples_ref.shape[0], -1)
+    metric = tc.zeros((samples.shape[0], samples_ref.shape[0]),
+                      device=samples.device, dtype=samples.dtype)
+    for n in range(samples.shape[0]):
+        tmp = samples[n, :].repeat(
+            samples_ref.shape[0], 1) - samples_ref
+        tmp = tc.cos(tmp * theta)
+        metric[n, :] = (-1) * tc.log(tmp).sum(dim=1) / tmp.shape[1]
+    if average:
+        return metric.sum(dim=1) / samples_ref.shape[0]
+    return metric
+
+
+def metric_neg_chebyshev(samples, samples_ref):
+    samples = samples.reshape(samples.shape[0], -1)
+    samples_ref = samples_ref.reshape(samples_ref.shape[0], -1)
+    metric = tc.ones((samples.shape[0], samples_ref.shape[0]),
+                     device=samples.device, dtype=samples.dtype)
+    for n in range(samples.shape[0]):
+        tmp = samples[n, :].repeat(
+            samples_ref.shape[0], 1) - samples_ref
+        metric[n, :] = tmp.norm(dim=1)
+    return metric.min(dim=1)[0]
+
+
+def metric_neg_cossin_chebyshev(samples, samples_ref, theta=np.pi/2-1e-14):
+    samples = samples.reshape(samples.shape[0], -1)
+    samples_ref = samples_ref.reshape(samples_ref.shape[0], -1)
+    metric = tc.zeros((samples.shape[0], samples_ref.shape[0]),
+                      device=samples.device, dtype=samples.dtype)
+    for n in range(samples.shape[0]):
+        tmp = samples[n, :].repeat(
+            samples_ref.shape[0], 1) - samples_ref
+        tmp = tc.cos(tmp * theta)
+        metric[n, :] = (-1) * tc.log(tmp).sum(dim=1) / tmp.shape[1]
+    return metric.min(dim=1)[0]
+
+
 def pauli_basis(which=None, device='cpu', if_list=False):
     basis = {
         'x': tc.tensor([[1.0, 1.0], [1.0, -1.0]], device=device) / np.sqrt(2),

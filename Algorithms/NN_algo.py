@@ -22,7 +22,7 @@ class FC2(nn.Module):
 def FC2_classifier(trainloader, testloader, num_classes,
                    length, para=None):
     para0 = dict()  # 默认参数
-    para0['batch_size'] = 200  # 批次大小
+    para0['n_img'] = 200  # 批次大小
     para0['dim_h'] = 4  # 隐藏层维数
     para0['lr'] = 2e-4  # 初始学习率
     para0['it_time'] = 1000  # 迭代次数

@@ -326,8 +326,8 @@ class QRNN_LatentGates(ADQC_basic):
                 psi = self.act_nth_gate_multi_states(psi, m)
             psi = psi.reshape(-1, vecs.shape[1])[:, 0].reshape(
                 vecs.shape[0], -1)
-            norm = tc.einsum('na,na->n', psi, psi.conj())
-            psi = tc.einsum('na,n->na',
+            norm = tc.einsum('na,na->digit', psi, psi.conj())
+            psi = tc.einsum('na,digit->na',
                             psi, 1/(tc.sqrt(norm+eps)))
         return norm
 

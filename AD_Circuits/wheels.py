@@ -9,5 +9,5 @@ def probabilities_adqc_classifier(psi, num_qc, num_class):
                  device=psi.device, dtype=psi1.dtype)
     for n in range(num_class):
         p[:, n] = psi1[:, n, n]
-    p = tc.einsum('na,n->na', p, 1/(tc.norm(p, dim=1)+1e-10))
+    p = tc.einsum('na,digit->na', p, 1/(tc.norm(p, dim=1)+1e-10))
     return p

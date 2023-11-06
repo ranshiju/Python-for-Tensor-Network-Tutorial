@@ -210,12 +210,12 @@ def load_iris(return_dict=False, return_tensor=True, device=None, dtype=tc.float
     iris = datasets.load_iris()
     if return_tensor:
         device = choose_device(device)
-        iris['data'] = tc.from_numpy(iris['data']).to(device=device, dtype=dtype)
+        iris['samples'] = tc.from_numpy(iris['samples']).to(device=device, dtype=dtype)
         iris['target'] = tc.from_numpy(iris['target']).to(device=device, dtype=tc.int64)
     if return_dict:
         return iris
     else:
-        samples = iris['data']
+        samples = iris['samples']
         targets = iris['target']
         return samples, targets
 
@@ -341,6 +341,22 @@ def rescale_max_min_feature_wise(samples, maximum=1, minimum=0):
     samples_ = samples_ / samples_max
     samples_ = samples_ * (maximum - minimum) + minimum
     return samples_.reshape(s)
+
+
+def select_num_samples(samples, labels, num, classes=None):
+    if classes is None:
+        classes = list(set(labels.numpy()))
+    labels_new = list()
+    samples_new = list()
+    for c in classes:
+        samples1 = samples[labels == c]
+        if samples1.shape[0] > num:
+            ind = tc.randperm(samples1.shape[0])[:num]
+            samples1 = samples1[ind]
+        samples_new.append(samples1)
+        labels_new.append(tc.ones((
+            samples1.shape[0], ), device=labels.device, dtype=labels.dtype) * c)
+    return tc.cat(samples_new, dim=0), tc.cat(labels_new, dim=0)
 
 
 def split_time_series(data, length, device=None, dtype=tc.float32):

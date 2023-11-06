@@ -9,7 +9,7 @@ from Algorithms import ADQC_algo, LSTM_algo
 print('设置参数')
 # 通用参数
 para = {'length': 8,  # 每个样本长度
-        'batch_size': 2000,  # batch大小
+        'n_img': 2000,  # batch大小
         'it_time': 1000,  # 总迭代次数
         'dtype': tc.float64,  # 数据精度
         'device': choose_device()}  # 计算设备（cuda优先）

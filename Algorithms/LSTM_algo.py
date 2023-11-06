@@ -22,7 +22,7 @@ def LSTM_predict_time_series(data, para=None):
     para0 = dict()  # 默认参数
     para0['test_ratio'] = 0.2  # 将部分样本划为测试集
     para0['length'] = 8  # 数据样本维数
-    para0['batch_size'] = 200  # 批次大小
+    para0['n_img'] = 200  # 批次大小
     para0['n_layer'] = 4  # LSTM层数
     para0['h_dim'] = 100  # 隐藏层维数
     para0['lr'] = 1e-4  # 初始学习率
@@ -42,8 +42,8 @@ def LSTM_predict_time_series(data, para=None):
         data[:num_train], para['length'], para['device'], para['dtype'])
     testset, test_lbs = split_time_series(
         data[num_train - para['length']:], para['length'], para['device'], para['dtype'])
-    trainloader = DataLoader(TensorDataset(trainset, train_lbs), batch_size=para['batch_size'], shuffle=True)
-    testloader = DataLoader(TensorDataset(testset, test_lbs), batch_size=para['batch_size'], shuffle=False)
+    trainloader = DataLoader(TensorDataset(trainset, train_lbs), batch_size=para['n_img'], shuffle=True)
+    testloader = DataLoader(TensorDataset(testset, test_lbs), batch_size=para['n_img'], shuffle=False)
 
     net = RNN(1, para['h_dim'], para['n_layer'])
     net = net.to(device=para['device'], dtype=para['dtype'])

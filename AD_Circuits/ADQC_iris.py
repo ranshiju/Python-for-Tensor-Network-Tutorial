@@ -9,7 +9,7 @@ from Algorithms.NN_algo import FC2_classifier
 print('设置参数')
 # 通用参数
 para = {'lr': 5e-4,  # 初始学习率
-        'batch_size': 2000,  # batch大小
+        'n_img': 2000,  # batch大小
         'it_time': 2000,  # 总迭代次数
         'print_time': 50,  # 打印间隔
         'dtype': tc.float64,  # 数据精度
@@ -35,9 +35,9 @@ train_samples, train_labels, test_samples, test_labels \
 trainset = TensorDataset(train_samples, train_labels)
 testset = TensorDataset(test_samples, test_labels)
 trainset = DataLoader(
-    trainset, para['batch_size'], shuffle=True)
+    trainset, para['n_img'], shuffle=True)
 testset = DataLoader(
-    testset, para['batch_size'], shuffle=False)
+    testset, para['n_img'], shuffle=False)
 
 print('训练FC2分类器')
 _, out1, _ = FC2_classifier(trainset, testset, num_classes=3,

@@ -2,9 +2,10 @@ import os
 import copy
 import torch as tc
 import numpy as np
+import Algorithms.wheels_gmps as wf
 from torch import nn, optim
 from Library import DataFun as df
-from Library.BasicFun import print_dict, fprint, choose_device, save, load, compare_dicts
+from Library.BasicFun import print_dict, fprint, choose_device, save, load
 from Library.MatrixProductState import \
     generative_MPS, ResMPS_basic, activated_ResMPS
 
@@ -129,8 +130,8 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
 
     para0['isSave'] = True  # whether save MPS
     para0['save_dir'] = './'  # where to save MPS
-    para0['save_name'] = 'GMPSdata'  # saving file name
-    para0['save_dt'] = 5  # the frequency to save
+    para0['save_name'] = None  # saving file name
+    para0['save_dt'] = 10  # the frequency to save
     para0['record'] = 'record.log'  # name of log file
     para0['device'] = choose_device()  # cpu or gpu
     para0['dtype'] = tc.float64
@@ -155,6 +156,9 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
         {'d': paraMPS['d'], 'theta': paraMPS['theta']})
     para['num_samples'], paraMPS['d'], paraMPS['length'] \
         = samples.shape
+    if para['save_name'] is None:
+        para['save_name'] = wf.gmps_save_name1('', paraMPS)
+    paraMPS['save_name'] = para['save_name']
 
     print('Parameters:')
     print_dict(para)
@@ -172,8 +176,7 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
     mps.initialize_vecs_norms()
     nll = [mps.average_nll_from_norms(
         mps.norms, paraMPS['eps'])]
-    fprint('Initially, nll = %g' % nll[0],
-           file=para['record'])
+    print('Initially, nll = %g' % nll[0])
 
     lr = para['lr']
     for t in range(para['sweepTime']):
@@ -195,33 +198,74 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
                 mps.normalize_central_tensor()
         if ((t + 1) % para['save_dt'] == 0) or (
                 t == (para['sweepTime'] - 1)):
-            save(para['save_dir'], para['save_name'],
-                 [mps.tensors, para, paraMPS], [
-                     'tensors', 'para', 'paraMPS'])
+            save(para['save_dir'], para['save_name'], [mps.tensors, para, paraMPS],
+                 ['tensors', 'para', 'paraMPS'])
         mps.update_norms_center()
         nll_ = mps.evaluate_nll_from_norms(average=True)
-        fprint('t = %d, nll = %g' % (t, nll_),
-               file=para['record'])
+        print('t = %d, nll = %g' % (t, nll_))
         if nll[-1] - nll_ < 1e-10:
             lr *= para['lr_decay']
             print('Reducing lr = %g' % lr)
         if lr < 1e-8:
             break
         nll.append(nll_)
-    info = {'nll': nll}
+    if para['sweepTime'] == 0:
+        save(para['save_dir'], para['save_name'], [mps.tensors, para, paraMPS],
+             ['tensors', 'para', 'paraMPS'])
+    info = {'nll': nll, 'gmps_file': os.path.join(para['save_dir'], para['save_name'])}
     return mps, para, info
+
+
+def GMPS_train_feature_selection(samples, tensors=None, para=None, paraMPS=None):
+    """
+    samples.shape = (num of samples_v, num of features)
+    tensors = list of tensors of MPS
+    NOTE:
+        The number of features equals to the length of MPS
+    """
+
+    if para is None:
+        para = dict()
+    para0 = dict()
+    para0['num_feature'] = 50  # feature selection
+    para0['lr'] = 0.1  # learning rate
+    para0['lr_decay'] = 0.9  # decaying of learning rate
+    para0['sweepTime'] = 0  # sweep time
+    para0['sweepTimeNoData'] = 100  # sweep time with no saved data
+    para0['sweepTimeFS'] = 100  # sweep time after feature selection
+
+    para0['isSave'] = True  # whether save MPS
+    para0['save_dir'] = './'  # where to save MPS
+    para0['save_name'] = None  # saving file name
+    para0['save_dt'] = 10  # the frequency to save
+    para0['record'] = 'record.log'  # name of log file
+    para0['device'] = choose_device()  # cpu or gpu
+    para0['dtype'] = tc.float64
+    para = dict(para0, **para)
+
+    if tensors is None:
+        para['sweepTime'] = max(para['sweepTimeNoData'], para['sweepTime'])
+    mps, para1, info1 = GMPS_train(samples, tensors, para, paraMPS)
+    pos = mps.feature_selection_OEE(para['num_feature'])
+    samples = samples[:, pos]
+
+    para1['save_name'] += 'feature_selected_%i' % para1['num_feature']
+    para1['sweepTime'] = para['sweepTimeFS']
+    mps, para1, info2 = GMPS_train(samples, tensors=None, para=para1, paraMPS=paraMPS)
+    save(para1['save_dir'], para1['save_name'], [mps.tensors, para, paraMPS, pos],
+         ['tensors', 'para', 'paraMPS', 'pos_fs'])
+    info2['pos_fs'] = pos
+    return mps, para1, info1, info2
 
 
 def GMPS_classification(trainset, testset,
                         para=None, paraMPS=None):
     """
-    :param trainset: 训练集（num_sample * num_feature的张量）
-    :param testset: 测试集（num_sample * num_feature张量）
+    :param trainset: 训练集
+    :param testset: 测试集
     :param para: 算法参数
     :param paraMPS: MPS参数
     """
-    from Algorithms.wheels_gmps import \
-        gmps_save_name1, acc_from_saved_gmps
 
     if para is None:
         para = dict()
@@ -229,10 +273,11 @@ def GMPS_classification(trainset, testset,
     para0['lr'] = 0.1  # learning rate
     para0['lr_decay'] = 0.9  # decaying factor of learning rate
     para0['sweepTime'] = 100  # sweep time
+    para0['sweepTimeNoData'] = 50  # sweep time
 
-    para0['isSave'] = True  # whether save MPS to the hard drive
+    para0['isSave'] = True  # whether to save MPS
     para0['save_dir'] = './'  # where to save MPS
-    para0['save_name'] = 'GMPSdata'  # name of the saved file
+    para0['save_name'] = None  # name of the saved file
     para0['save_dt'] = 20  # the frequency to save
     para0['record'] = 'record.log'  # name of log file
     para0['device'] = choose_device()  # cpu or gpu
@@ -267,38 +312,138 @@ def GMPS_classification(trainset, testset,
             print('Category %i has no samples_v; '
                   'remove this category' % classes[digit])
         else:
-            fprint('Training GMPS for digits '
-                   + str(classes[digit]), file=para['record'])
-            para['save_name'] = gmps_save_name1(
+            print('Training GMPS for digits '
+                   + str(classes[digit]))
+            para['save_name'] = wf.gmps_save_name1(
                 classes[digit], paraMPS)
             data = load(os.path.join(
                 para['save_dir'], para['save_name']),
                 ['tensors', 'paraMPS'])
             if type(data) is tuple:
                 tensors, paraMPS1 = data
-            else:  # mps为GMPS类
+            elif data is not None:  # mps为GMPS类
                 tensors, paraMPS1 = data.tensors, data.para
-            compare_dicts(paraMPS, paraMPS1,
-                          'paraMPS', 'loaded_paraMPS')
+            else:
+                tensors, paraMPS1 = None, dict()
+                para['sweepTime'] = max(
+                    para['sweepTime'], para['sweepTimeNoData'])
             if tensors is not None:
-                print('Load existing data...')
+                print('Load existing samples...')
             else:
                 print('Train new GMPS ...')
             GMPS_train(samples_now.to(
                 device=para['device'], dtype=para['dtype']),
                 tensors, para, paraMPS)
             tc.cuda.empty_cache()
-    acc_train = acc_from_saved_gmps(
+    acc_train = wf.acc_from_saved_gmps(
         samples, labels, para, paraMPS)
-    acc_test = acc_from_saved_gmps(
+    acc_test = wf.acc_from_saved_gmps(
         samples_t, labels_t, para, paraMPS)
     print('Train accuracy = %g, test accuracy = %g'
           % (acc_train, acc_test))
+    return acc_train, acc_test
+
+
+def GMPSC_feature_select(trainset, testset,
+                         para=None, paraMPS=None):
+    """
+    :param trainset: 训练集
+    :param testset: 测试集
+    :param para: 算法参数
+    :param paraMPS: MPS参数
+    """
+
+    if para is None:
+        para = dict()
+    para0 = dict()
+    para0['num_feature'] = 50  # feature selection
+    para0['lr'] = 0.1  # learning rate
+    para0['lr_decay'] = 0.9  # decaying factor of learning rate
+    para0['sweepTime'] = 100  # sweep time
+    para0['sweepTimeNoData'] = 100  # sweep time
+    para0['sweepTimeFS'] = 100  # sweep time after feature selection
+    para0['calcu_acc_no_select'] = True
+
+    para0['isSave'] = True  # whether to save MPS
+    para0['save_dir'] = './'  # where to save MPS
+    para0['save_name'] = None  # name of the saved file
+    para0['save_dt'] = 20  # the frequency to save
+    para0['record'] = 'record.log'  # name of log file
+    para0['device'] = choose_device()  # cpu or gpu
+    para0['dtype'] = tc.float64
+    para = dict(para0, **para)
+
+    if paraMPS is None:
+        paraMPS = dict()
+    paraMPS0 = {
+        'length': 784,
+        'd': 2,
+        'chi': 3,
+        'boundary': 'open',
+        'feature_map': 'cossin',
+        'theta': 1.0,
+        'eps': 1e-14,
+        'device': para['device'],
+        'dtype': para['dtype']
+    }
+    paraMPS = dict(paraMPS0, **paraMPS)
+
+    samples, labels = df.dataset2tensors(trainset)
+    samples_t, labels_t = df.dataset2tensors(testset)
+    samples, samples_t = \
+        samples.reshape(samples.shape[0], -1), \
+        samples_t.reshape(samples_t.shape[0], -1)
+    classes = sorted(list(set(list(labels.cpu().numpy()))))
+
+    gmps_names = list()
+    gmps_fs_names = list()
+    for digit in range(len(classes)):
+        samples_now = samples[labels == classes[digit], :]
+        if samples_now.numel() == 0:
+            print('Category %i has no samples_v; '
+                  'remove this category' % classes[digit])
+        else:
+            print('Training GMPS for digits '
+                   + str(classes[digit]))
+            para['save_name'] = wf.gmps_save_name1(
+                classes[digit], paraMPS)
+            data = load(os.path.join(
+                para['save_dir'], para['save_name']),
+                ['tensors', 'paraMPS'])
+            if type(data) is tuple:
+                tensors, paraMPS1 = data
+            elif data is not None:  # mps为GMPS类
+                tensors, paraMPS1 = data.tensors, data.para
+            else:
+                tensors, paraMPS1 = None, dict()
+                para['sweepTime'] = max(
+                    para['sweepTime'], para['sweepTimeNoData'])
+            if tensors is not None:
+                print('Load existing samples and retrain for %i sweeps...' % para['sweepTime'])
+            else:
+                print('Train new GMPS ...')
+            info1, info2 = GMPS_train_feature_selection(samples_now.to(
+                device=para['device'], dtype=para['dtype']), tensors, para, paraMPS)[2:]
+            gmps_names.append(info1['gmps_file'])
+            gmps_fs_names.append(info2['gmps_file'])
+            tc.cuda.empty_cache()
+    if para['calcu_acc_no_select']:
+        acc_train = wf.acc_saved_gmpsc_by_file_names(samples, labels, gmps_names)
+        acc_test = wf.acc_saved_gmpsc_by_file_names(samples_t, labels_t, gmps_names)
+        fprint('With all feature selected, train accuracy = %g, test accuracy = %g'
+               % (acc_train, acc_test), file='acc.log')
+    else:
+        acc_train, acc_test = None, None
+    acc_train_fs = wf.acc_saved_gmpsc_FS_by_file_names(samples, labels, gmps_fs_names)
+    acc_test_fs = wf.acc_saved_gmpsc_FS_by_file_names(samples_t, labels_t, gmps_fs_names)
+    fprint('With %i feature selected, train accuracy = %g, test accuracy = %g'
+           % (para['num_feature'], acc_train_fs, acc_test_fs), file='acc.log')
+    return acc_train, acc_test, acc_train_fs, acc_test_fs
 
 
 def generate_sample_by_gmps(
         mps, sample=None, order_g=None, paraG=None):
-    from random import choices
+    from Algorithms.wheels_gmps import generate_from_onebody_rho
 
     if paraG is None:
         paraG = dict()
@@ -347,11 +492,9 @@ def generate_sample_by_gmps(
             mps.center_orthogonalization(
                 c=order_gn[0], way='qr', normalize=True)
             rho = mps.one_body_RDM(order_gn[0])
-            lm = rho.diag()
-            state = choices([0, 1], (
-                    lm).cpu().numpy(), k=1)[0]
+            state, vec = generate_from_onebody_rho(rho, mps.para, paraG)
             sample[order_g[pos]] = state
-            mps.project_qubit_nt(order_gn[0], state)
+            mps.project_qubit_nt(order_gn[0], vec)
             mps.center = max(0, mps.center-1)
 
             order_gn[order_gn>order_gn[0]] -= 1
@@ -371,12 +514,9 @@ def generate_sample_by_gmps(
                 mps1.center_orthogonalization(
                     c=order_gn1[0], way='qr', normalize=True)
                 rho = mps1.one_body_RDM(order_gn1[0])
-                lm = rho.diag()
-                state = choices(
-                    [0, 1], (lm / lm.sum()).cpu().numpy(),
-                    k=1)[0]
+                state, vec = generate_from_onebody_rho(rho, mps.para, paraG)
                 sample_[order_g[pos]] = state
-                mps1.project_qubit_nt(order_gn1[0], state)
+                mps1.project_qubit_nt(order_gn1[0], vec)
                 mps1.center = max(0, mps1.center - 1)
 
                 order_gn1[order_gn1 > order_gn1[0]] -= 1
@@ -385,4 +525,6 @@ def generate_sample_by_gmps(
             sample_g += sample_
         sample = sample_g / paraG['num_s']
     return sample
+
+
 
