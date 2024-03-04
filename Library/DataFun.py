@@ -210,12 +210,12 @@ def load_iris(return_dict=False, return_tensor=True, device=None, dtype=tc.float
     iris = datasets.load_iris()
     if return_tensor:
         device = choose_device(device)
-        iris['samples'] = tc.from_numpy(iris['samples']).to(device=device, dtype=dtype)
+        iris['sample'] = tc.from_numpy(iris['sample']).to(device=device, dtype=dtype)
         iris['target'] = tc.from_numpy(iris['target']).to(device=device, dtype=tc.int64)
     if return_dict:
         return iris
     else:
-        samples = iris['samples']
+        samples = iris['sample']
         targets = iris['target']
         return samples, targets
 
@@ -237,6 +237,8 @@ def load_samples_mnist(which='mnist', num=1, pos=None, dataset_path=None, test=T
         return samples[:num]
     elif pos == 'last':
         return samples[samples.shape[0]-num:]
+    elif pos == 'pos':
+        return samples[num]
 
 
 def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
@@ -279,7 +281,15 @@ def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
         train_dataset = choose_classes_dataset(train_dataset, process['classes'])
         if test:
             test_dataset = choose_classes_dataset(test_dataset, process['classes'])
-    return train_dataset, test_dataset
+    if 'return_tensor' in process and process['return_tensor']:
+        train_samples, train_lbs = dataset2tensors(train_dataset)
+        if test:
+            test_samples, test_lbs = dataset2tensors(test_dataset)
+            return (train_samples, train_lbs), (test_samples, test_lbs)
+        else:
+            return (train_samples, train_lbs), None
+    else:
+        return train_dataset, test_dataset
 
 
 def make_dataloader(dataset, batch_size=None, shuffle=False):

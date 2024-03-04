@@ -28,6 +28,7 @@ for t in range(mesure_time):
     s[t] = -(p[0].real * np.log(p[0].real) + p[
         1].real * np.log(p[1].real))
 
+
 print('On qubit-0:\n Maximum of entropy = %g \n '
       'Minimum of entropy = %g \n '
       'Entanglement entropy = %g'
@@ -43,7 +44,7 @@ for t in range(mesure_time):
     # 计算概率分布
     p = [proj[:, s].conj().inner(rho).inner(
         proj[:, s]) for s in [0, 1]]
-    # 计算纠缠熵
+    # 计算冯诺伊曼熵
     s1[t] = -(p[0].real * np.log(p[0].real) + p[
         1].real * np.log(p[1].real))
 

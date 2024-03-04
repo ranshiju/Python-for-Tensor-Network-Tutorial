@@ -52,19 +52,29 @@ def reduced_density_matrix(psi, pos):
 
 
 def vecs2product_state(vecs):
-    # vecs的形状为：样本数 * 向量维数 * 向量（特征）个数
-    if vecs.ndimension() == 2:
+    if type(vecs) in [list, tuple]:
+        psi = vecs[0]
+        dims = [vecs[0].numel()]
+        for n in range(1, len(vecs)):
+            psi = psi.outer(vecs[n])
+            dims.append(vecs[n].numel())
+        return psi.reshape(dims)
+    elif vecs.ndimension() == 2:
+        # vecs的形状为：向量维数 * 向量（特征）个数
         psi = vecs[:, 0]
         for n in range(1, vecs.shape[1]):
             psi = psi.outer(vecs[:, n])
         return psi.reshape([vecs.shape[0]] * vecs.shape[1])
-    else:  # vecs.ndimension() == 3，第0维为样本数
+    else:
+        # vecs.ndimension() == 3
+        # vecs的形状为：样本数 * 向量维数 * 向量（特征）个数
         psi1 = list()
         for m in range(vecs.shape[0]):
             psi = vecs[m, :, 0]
             for n in range(1, vecs.shape[2]):
                 psi = psi.outer(vecs[m, :, n]).flatten()
             psi1.append(psi.reshape([1] + ([vecs.shape[1]] * vecs.shape[2])))
+        # retuen：样本数 * [直积态维数])
         return tc.cat(psi1, dim=0)
 
 

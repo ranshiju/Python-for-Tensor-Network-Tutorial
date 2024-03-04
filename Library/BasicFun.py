@@ -99,6 +99,18 @@ def indexes_eq2einsum_eq(indexes):
     return eq
 
 
+def join_path(path1, path2):
+    if path1 is None:
+        path_file = path2
+    elif path2 is None:
+        path_file = path1
+    elif (path1 is None) and (path2 is None):
+        path_file = './'
+    else:
+        path_file = os.path.join(path1, path2)
+    return path_file
+
+
 def list_eq2einsum_eq(eq):
     # 将list表示的equation转化为einsum函数的equation
     # list中的数字不能超过25！！！
@@ -118,20 +130,26 @@ def load(path_file, names=None, device='cpu', return_tuple=True):
     if os.path.isfile(path_file):
         if names is None:
             data = tc.load(path_file, map_location=device)
-            if return_tuple:
-                return tuple(data[x] for x in data)
+            if len(data) == 1:
+                return list(data.values())[0]
             else:
-                return data
+                if return_tuple:
+                    return tuple(data[x] for x in data)
+                else:
+                    return data
         else:
             tmp = tc.load(path_file, map_location=device)
             if type(names) is str:
-                data = tmp[names]
-                return data
+                if names in tmp:
+                    return tmp[names]
+                else:
+                    return None
             elif type(names) in [tuple, list]:
                 nn = len(names)
-                data = list(range(0, nn))
-                for i in range(0, nn):
-                    data[i] = tmp[names[i]]
+                data = list(range(nn))
+                for i in range(nn):
+                    if names[i] in tmp:
+                        data[i] = tmp[names[i]]
                 return tuple(data)
             else:
                 return None
@@ -144,13 +162,15 @@ def mkdir(path):
         os.makedirs(path)
 
 
-def plot(x, *y, marker='s', linestyle='-', xlabel=None, ylabel=None, legend=None):
+def plot(x, *y, marker='s', linestyle='-',
+         markersize=None, markerfacecolor=None, markeredgewidth=None,
+         xlabel=None, ylabel=None, legend=None):
     if type(x) is tc.Tensor:
         x = x.cpu().numpy()
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     if len(y) > 0.5:
-        figs = [None] * len(y)
+        figs = list()
         if type(marker) is str:
             marker = [marker] * len(y)
         if type(linestyle) is str:
@@ -158,11 +178,17 @@ def plot(x, *y, marker='s', linestyle='-', xlabel=None, ylabel=None, legend=None
         for n, y0 in enumerate(y):
             if type(y0) is tc.Tensor:
                 y0 = y0.cpu().numpy()
-            figs[n], = ax.plot(x, y0, marker=marker[n],
-                               linestyle=linestyle[n])
+            fig, = ax.plot(x, y0, marker=marker[n], markersize=markersize,
+                           markeredgewidth=markeredgewidth,
+                           linestyle=linestyle[n])
+            fig.set_markerfacecolor(markerfacecolor)
+            figs.append(fig)
     else:
         figs, = ax.plot(np.arange(len(x)), x,
-                        marker=marker, linestyle=linestyle)
+                        marker=marker, markersize=markersize,
+                        markeredgewidth=markeredgewidth,
+                        linestyle=linestyle)
+        figs.set_markerfacecolor(markerfacecolor)
         figs = [figs]
     if legend is not None:
         plt.legend(figs, legend)
@@ -204,13 +230,13 @@ def plot_multi_imgs(imgs, num_rows=1):
 
 
 def print_progress_bar(n_current, n_total, message=''):
-    x1 = math.floor(n_current / n_total * 10)
-    x2 = math.floor(n_current / n_total * 100) % 10
-    if x1 == 10:
-        message += '\t' + chr(9646) * x1
+    if n_current == (n_total - 1):
+        message += '\t' + chr(9646) * 10 + 'done! \n'
     else:
+        x1 = math.floor(n_current / n_total * 10)
+        x2 = math.floor(n_current / n_total * 100) % 10
         message += '\t' + chr(9646) * x1 + str(x2) + chr(9647) * (9 - x1)
-    print('\r'+message, end='')
+    print('\r' + message, end='')
     time.sleep(0.01)
 
 
@@ -233,12 +259,21 @@ def replace_value(x, value0, value_new):
     return list(x_)
 
 
-def save(path, file, data, names):
-    mkdir(path)
+def save(path, file, data, names, append=False):
+    if path is None:
+        path_file = file
+    elif file is None:
+        path_file = path
+    else:
+        mkdir(path)
+        path_file = os.path.join(path, file)
     tmp = dict()
     for i in range(0, len(names)):
         tmp[names[i]] = data[i]
-    tc.save(tmp, os.path.join(path, file))
+    if append and os.path.isfile(path_file):
+        data0 = load(path_file, return_tuple=False)
+        tmp = dict(data0, **tmp)
+    tc.save(tmp, path_file)
 
 
 def search_file(path, exp):
@@ -253,17 +288,29 @@ def search_file(path, exp):
 
 
 def show_multiple_images(imgs, lxy=None, titles=None, save_name=None,
-                         show=True, cmap='hot', img_size=None):
-    if cmap is None:
-        cmap = plt.cm.gray
-    ni = len(imgs)
-    if lxy is None:
-        lx = int(np.sqrt(ni)) + 1
-        ly = int(ni / lx) + 1
-    else:
-        lx, ly = tuple(lxy)
+                         show=True, cmap='coolwarm', img_size=None):
     plt.figure()
     plt.rcParams['font.sans-serif'] = ['Songti SC']
+
+    if cmap is None:
+        cmap = plt.cm.gray
+    if type(imgs) is tc.Tensor:
+        imgs = imgs.cpu().numpy()
+    if (type(imgs) is np.ndarray) and (imgs.ndim == 2):
+        plt.imshow(imgs, cmap=cmap)
+        plt.show()
+        return None
+    ni = len(imgs)
+    if lxy is None:
+        lx = int(np.sqrt(ni))
+        ly = int((ni+1) / lx)
+    else:
+        lx, ly = tuple(lxy)
+    if lx == -1:
+        lx = int((ni+1) / ly)
+    elif ly == -1:
+        ly = int((ni+1) / lx)
+
     for n in range(ni):
         plt.subplot(lx, ly, n + 1)
         if type(imgs[n]) is tc.Tensor:
@@ -290,6 +337,14 @@ def show_multiple_images(imgs, lxy=None, titles=None, save_name=None,
 
 def sort_list(a, order):
     return [a[i] for i in order]
+
+
+def supplementary(set1, set2):
+    if type(set1) is tc.Tensor:
+        set1 = set1.cpu().tolist()
+    if type(set2) is tc.Tensor:
+        set2 = set2.cpu().tolist()
+    return set(set1) - set(set2)
 
 
 # -------------------------------------

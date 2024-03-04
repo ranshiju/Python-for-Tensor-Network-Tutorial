@@ -5,9 +5,32 @@ import numpy as np
 import Algorithms.wheels_gmps as wf
 from torch import nn, optim
 from Library import DataFun as df
-from Library.BasicFun import print_dict, fprint, choose_device, save, load
+from Library.BasicFun import print_dict, fprint, choose_device, \
+    save, load, print_progress_bar
 from Library.MatrixProductState import \
     generative_MPS, ResMPS_basic, activated_ResMPS
+
+
+def ESOP_GMPS(mps, num_f=-1, recalculate=False, clone=True):
+    mps = input_GMPS(mps, clone=clone)
+    return mps.EOSP(num_f, recalculate=recalculate)
+
+
+def input_GMPS(mps, which=None, clone=True):
+    if which is None:
+        which = ['tensors', 'paraMPS', 'properties']
+    loaded = False
+    if type(mps) is str:
+        mps = load(mps, which, return_tuple=True)
+        loaded = True
+        # print(mps[2]['oee'])
+    if type(mps) in [tuple, list]:
+        mps = generative_MPS(*mps)
+        if clone and (not loaded):
+            mps.clone_tensors()
+    mps.correct_device()
+    mps.to()
+    return mps
 
 
 def ResMPS_classifier(train_loader, test_loader,
@@ -115,7 +138,7 @@ def ResMPS_classifier(train_loader, test_loader,
 
 def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
     """
-    samples.shape = (num of samples_v, num of features)
+    sample.shape = (num of samples_v, num of features)
     tensors = list of tensors of MPS
     NOTE:
         The number of features equals to the length of MPS
@@ -174,8 +197,8 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
         0, way='qr', dc=-1, normalize=True)
 
     mps.initialize_vecs_norms()
-    nll = [mps.average_nll_from_norms(
-        mps.norms, paraMPS['eps'])]
+    nll_ = mps.average_nll_from_norms(mps.norms, paraMPS['eps'])
+    nll = [nll_.item()]
     print('Initially, nll = %g' % nll[0])
 
     lr = para['lr']
@@ -208,7 +231,7 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
             print('Reducing lr = %g' % lr)
         if lr < 1e-8:
             break
-        nll.append(nll_)
+        nll.append(nll_.item())
     if para['sweepTime'] == 0:
         save(para['save_dir'], para['save_name'], [mps.tensors, para, paraMPS],
              ['tensors', 'para', 'paraMPS'])
@@ -218,7 +241,7 @@ def GMPS_train(samples, tensors=None, para=None, paraMPS=None):
 
 def GMPS_train_feature_selection(samples, tensors=None, para=None, paraMPS=None):
     """
-    samples.shape = (num of samples_v, num of features)
+    sample.shape = (num of samples_v, num of features)
     tensors = list of tensors of MPS
     NOTE:
         The number of features equals to the length of MPS
@@ -328,7 +351,7 @@ def GMPS_classification(trainset, testset,
                 para['sweepTime'] = max(
                     para['sweepTime'], para['sweepTimeNoData'])
             if tensors is not None:
-                print('Load existing samples...')
+                print('Load existing sample...')
             else:
                 print('Train new GMPS ...')
             GMPS_train(samples_now.to(
@@ -419,7 +442,7 @@ def GMPSC_feature_select(trainset, testset,
                 para['sweepTime'] = max(
                     para['sweepTime'], para['sweepTimeNoData'])
             if tensors is not None:
-                print('Load existing samples and retrain for %i sweeps...' % para['sweepTime'])
+                print('Load existing sample and retrain for %i sweeps...' % para['sweepTime'])
             else:
                 print('Train new GMPS ...')
             info1, info2 = GMPS_train_feature_selection(samples_now.to(
@@ -449,17 +472,13 @@ def generate_sample_by_gmps(
         paraG = dict()
     para0 = {
         'generate_order': 'ascending',
-        'way': 'multi_average',  # single, multi-average
+        'way': 'multi_average',  # single, multi-average, inverse
         'num_s': 1
     }
     paraG = dict(para0, **paraG)
-
-    if type(mps) in [tuple, list]:
-        # mps = (tensors, paraMPS)
-        mps = generative_MPS(mps[0], mps[1])
-    mps.clone_tensors()
-    mps.correct_device()
-    mps.to()
+    if paraG['way'] == 'inverse':
+        paraG['num_s'] = 1
+    mps = input_GMPS(mps)
 
     if order_g is None:
         if paraG['generate_order'] == 'ascending':
@@ -468,6 +487,8 @@ def generate_sample_by_gmps(
             order_g = list(range(len(mps.tensors) - 1, -1, -1))
         else:
             order_g = copy.deepcopy(paraG['generate_order'])
+    elif type(order_g) is tc.Tensor:
+        order_g = order_g.cpu().numpy()
     order_g = np.array(order_g)
 
     if sample is None:
@@ -486,7 +507,7 @@ def generate_sample_by_gmps(
         mps.project_multi_qubits(order_p, sample_v[0])
 
     order_gn = np.argsort(np.argsort(order_g))
-    if (paraG['way'] == 'single') or (paraG['num_s'] == 1):
+    if (paraG['way'] in ['single', 'inverse']) or (paraG['num_s'] == 1):
         pos = 0
         while len(order_gn) > 0:
             mps.center_orthogonalization(
@@ -500,7 +521,7 @@ def generate_sample_by_gmps(
             order_gn[order_gn>order_gn[0]] -= 1
             order_gn = order_gn[1:]
             pos += 1
-    else:
+    else:  # multi_average
         sample_g = tc.zeros(
             sample.shape,
             device=sample.device, dtype=sample.dtype)

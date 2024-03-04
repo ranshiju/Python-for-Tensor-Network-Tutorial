@@ -24,7 +24,6 @@ class TensorPureState:
         self.rand_seed = None
         self.device = bf.choose_device(device)
         self.dtype = dtype
-
         if nq is None:
             nq = 3
         if tensor is None:
@@ -33,8 +32,7 @@ class TensorPureState:
             self.normalize(p=2)
         else:
             self.tensor = tensor
-        device = bf.choose_device(device)
-        self.tensor.to(device=device, dtype=dtype)
+        self.tensor.to(device=self.device, dtype=self.dtype)
 
     def act_single_gate(self, gate, pos, pos_control=None):
         if bf.compare_iterables(pos, pos_control):
@@ -68,13 +66,19 @@ class TensorPureState:
             bf.inverse_permutation(perm))
 
     def bipartite_ent(self, pos):
-        if type(pos) not in (list, tuple):
-            pos = [pos]
         ind = list(range(self.tensor.ndimension()))
         for x in pos:
             ind.remove(x)
         psi = self.tensor.permute(pos+ind).reshape(2**len(pos), -1)
         return tc.linalg.svdvals(psi)
+
+    def onsite_ent_entropy(self, eps=1e-14):
+        OEE = tc.zeros(self.tensor.ndimension(), device=self.device, dtype=self.dtype)
+        for n in range(self.tensor.ndimension()):
+            rho = self.reduced_density_matrix(n)
+            lm = tc.linalg.eigvalsh(rho)
+            OEE[n] = -lm.inner(tc.log(lm+eps))
+        return OEE
 
     def normalize(self, p=2):
         norm = self.tensor.norm(p=p)
@@ -90,13 +94,29 @@ class TensorPureState:
             dim_h = operator.shape[0]
         return tc.trace(rho.mm(operator.reshape(dim_h, dim_h)))
 
+    def project(self, v, pos, update_state=True, return_tensor=False):
+        psi1 = tc.tensordot(self.tensor, v, [[pos], [0]])
+        p = psi1.norm()
+        psi1 /= p
+        if update_state:
+            self.tensor = psi1
+        if return_tensor:
+            return psi1
+        else:
+            return TensorPureState(psi1.clone())
+
     def reduced_density_matrix(self, pos):
-        ind = list(range(self.tensor.ndimension()))
-        dim = 1
-        for n in pos:
-            ind.remove(n)
-            dim *= self.tensor.shape[n]
-        x = self.tensor.permute(pos + ind).reshape(dim, -1)
+        if type(pos) is int:
+            ind = list(range(self.tensor.ndimension()))
+            ind.remove(pos)
+            return tc.tensordot(self.tensor.conj(), self.tensor, (ind, ind))
+        else:
+            ind = list(range(self.tensor.ndimension()))
+            dim = 1
+            for n in pos:
+                ind.remove(n)
+                dim *= self.tensor.shape[n]
+            x = self.tensor.permute(pos + ind).reshape(dim, -1)
         return x.mm(x.t().conj())
 
     def sampling(self, n_shots=1024, position=None, basis=None,

@@ -1,8 +1,8 @@
-import os
+import os, copy
 import torch as tc
 import numpy as np
 from random import choices
-from Library.BasicFun import load, choose_device
+from Library.BasicFun import load, print_progress_bar
 from Library.DataFun import feature_map
 from Library.MatrixProductState import generative_MPS
 
@@ -66,7 +66,7 @@ def acc_saved_gmpsc_FS_by_file_names(samples, labels, gmps_files, classes=None, 
             classes = sorted(list(set(list(labels.cpu().numpy()))))
     if samples.ndimension() == 1:
         samples = samples.reshape(1, samples.numel())
-    # samples = samples.reshape(samples.shape[0], -1)
+    # sample = sample.reshape(sample.shape[0], -1)
 
     nll, nll_tmp = list(), list()
     for digit in range(len(classes)):
@@ -100,28 +100,118 @@ def gmps_save_name2(category, paraMPS, dataset):
            + '_FM_' + paraMPS['feature_map'] + '_digit_' + str(category)
 
 
+def OEE_variation_one_qubit_measurement(mps, features_vecs, pos=None, OEE_eps=-1):
+    # feature_vecs.shape = (d, num_f)
+    if pos is None:
+        pos = tc.arange(features_vecs.shape[1])
+    OEE = mps.entanglement_ent_onsite()
+    if OEE_eps > 1e-15:
+        OEE[OEE < OEE_eps] = 0.0
+        pos1 = np.arange(OEE.numel())
+        pos1 = list(pos1[OEE >= OEE_eps])
+    else:
+        pos1 = []
+    OEE_sum = OEE.sum()
+    dOEE = tc.zeros((features_vecs.shape[1], ), device=features_vecs.device,
+                    dtype=features_vecs.dtype)
+    for n in range(features_vecs.shape[1]):
+        if (OEE_eps < 1e-15) or (pos[n] in pos1):
+            mps.center_orthogonalization(pos[n])
+            mps1 = generative_MPS(mps.tensors, mps.para)
+            mps1.clone_tensors()
+            mps1.project_qubit_nt(pos[n], features_vecs[:, n])
+            mps1.center = max(0, pos[n]-1)
+            if len(pos1) > 0:
+                pos1_ = copy.copy(pos1)
+                pos1_.remove(pos[n])
+                pos1_ = np.array(pos1_)
+                pos1_[pos1_ > pos[n].item()] -= 1
+                OEE1 = mps1.entanglement_ent_onsite(which=pos1_)
+            else:
+                OEE1 = mps1.entanglement_ent_onsite()
+            dOEE[n] = OEE_sum - OEE1.sum()
+        else:
+            dOEE[n] = 0.0
+        print_progress_bar(n, features_vecs.shape[1], 'In calculating dOEE: ')
+    return dOEE
+
+
+def OEE_variation_one_qubit_measurement_simple(
+        mps, features_vecs):
+    # feature_vecs.shape = (d, num_f)
+    pos = tc.arange(features_vecs.shape[1])
+    OEE = mps.entanglement_ent_onsite()
+    OEE_sum = OEE.sum()
+    dOEE = tc.zeros((features_vecs.shape[1], ),
+                    device=features_vecs.device,
+                    dtype=features_vecs.dtype)
+    for n in range(features_vecs.shape[1]):
+        mps.center_orthogonalization(pos[n])
+        mps1 = generative_MPS(mps.tensors, mps.para)
+        mps1.clone_tensors()
+        mps1.project_qubit_nt(pos[n], features_vecs[:, n])
+        mps1.center = max(0, pos[n]-1)
+        OEE1 = mps1.entanglement_ent_onsite()
+        dOEE[n] = OEE_sum - OEE1.sum()
+        print_progress_bar(n, features_vecs.shape[1],
+                           'In calculating dOEE: ')
+    return dOEE
+
+
 def generate_from_onebody_rho(rho, para_mps, para_g):
+    if type(rho) in [list, tuple]:
+        device = rho[0].device
+        dtype = rho[0].dtype
+        if len(rho) == 1:
+            rho = rho[0]
+            single_rho = True
+        else:
+            rho = tc.stack(rho)
+            single_rho = False
+    else:
+        assert type(rho) is tc.Tensor
+        device = rho.device
+        dtype = rho.dtype
+        single_rho = (rho.ndimension() == 2)
     sz = tc.tensor([[0, 0], [0, 1]],
-                   dtype=para_mps['dtype'],
-                   device=para_mps['device'])
+                   dtype=dtype,
+                   device=device)
     if para_g['way'] == 'mz':
-        state = tc.trace(rho.mm(sz))
+        if single_rho:
+            state = tc.trace(rho.mm(sz))
+        else:
+            state = tc.einsum('nab,ba->n', rho, sz)
         vec = feature_map(
-            state.view([1]), para_mps['feature_map'],
+            state.reshape((-1, )), para_mps['feature_map'],
             para={'d': para_mps['d'],
                   'theta': para_mps['theta']})
         vec = vec.squeeze()
     elif para_g['way'] == 'inverse':
-        state = tc.arccos(tc.sqrt(rho[0, 0])) / (
-                para_mps['theta'] * np.pi / 2)
+        assert para_mps['feature_map'] in ['cossin', 'cos-sin', 'cos_sin']
+        lm, v = tc.linalg.eigh(rho)
+        if single_rho:
+            state = tc.arccos(tc.abs(v[0, -1])) / (
+                    para_mps['theta'] * np.pi / 2)
+        else:
+            state = tc.arccos(tc.abs(v[:, 0, -1])) / (
+                    para_mps['theta'] * np.pi / 2)
         vec = feature_map(
-            state.view([1]), para_mps['feature_map'],
+            state.reshape((-1, )), para_mps['feature_map'],
             para={'d': para_mps['d'],
                   'theta': para_mps['theta']})
         vec = vec.squeeze()
-    else:
-        lm = rho.diag()
-        state = choices([0, 1], (
-            lm).cpu().numpy(), k=1)[0]
-        vec = state
+    else:  # single sample
+        if single_rho:
+            lm = rho.diag()
+            state = choices([0, 1], (
+                lm).cpu().numpy(), k=1)[0]
+            vec = state
+        else:
+            state = list()
+            for n in range(rho.shape[0]):
+                lm = rho[n].diag()
+                state.append(choices([0, 1], (
+                    lm).cpu().numpy(), k=1)[0])
+            state = tc.tensor(state, device=device)
+            vec = state.clone()
     return state, vec

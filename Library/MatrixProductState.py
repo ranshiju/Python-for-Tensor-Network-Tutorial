@@ -1,17 +1,27 @@
 import copy
+
+import numpy as np
 import torch as tc
 from torch import nn
 import Library.BasicFun as bf
 import Library.DataFun as df
 
+mps_propertie_keys = ['oee', 'eosp_ordering', 'eosp_oee_av', 'qs_number']
+
 
 class MPS_basic:
 
-    def __init__(self, tensors=None, para=None):
+    def __init__(self, tensors=None, para=None, properties=None):
         self.name = 'MPS'
         self.para = dict()
         self.input_paras(para)
         self.center = -1  # 正交中心（-1代表不具有正交中心）
+
+        # 以下属性参考self.update_properties（通过properties输入）
+        self.oee = None  # 单点纠缠熵（所有点）
+        self.eosp_ordering = None  # EOSP采样顺序（所有点）
+        self.eosp_oee_av = None  # EOSP采样顺序每次的平均OEE
+        self.qs_number = None  # Q稀疏性
 
         self.eps = self.para['eps']
         self.device = bf.choose_device(self.para['device'])
@@ -24,6 +34,7 @@ class MPS_basic:
             self.length = len(self.tensors)
             self.to()
         self.update_attributes_para()
+        self.update_properties(properties)
 
     def input_paras(self, para=None):
         para0 = {
@@ -70,9 +81,29 @@ class MPS_basic:
         self.tensors[-1] = x1
         self.center = -1
 
+    def copy_properties(self, mps, properties=None):
+        if properties is None:
+            properties = mps_propertie_keys
+        for x in properties:
+            setattr(self, x, getattr(mps, x))
+
     def correct_device(self):
         self.device = bf.choose_device(self.device)
         self.to()
+
+    def clone_mps(self):
+        tensors = [x.clone() for x in self.tensors]
+        mps1 = MPS_basic(tensors=tensors, para=copy.deepcopy(self.para))
+        for x in mps_propertie_keys:
+            setattr(mps1, x, getattr(self, x))
+        return mps1
+
+    def clone_gmps(self):
+        tensors = [x.clone() for x in self.tensors]
+        mps1 = generative_MPS(tensors=tensors, para=copy.deepcopy(self.para))
+        for x in mps_propertie_keys:
+            setattr(mps1, x, getattr(self, x))
+        return mps1
 
     def clone_tensors(self):
         self.tensors = [x.clone() for x in self.tensors]
@@ -115,20 +146,140 @@ class MPS_basic:
             assert self.tensors[n].shape[-1] == self.tensors[n+1].shape[0]
         assert self.tensors[0].shape[0] == self.tensors[-1].shape[-1]
 
-    def entanglement_ent_onsite(self, which=None, eps=None):
-        if which in [None, 'all']:
+    def EOSP(self, num_f=-1, recalculate=False,
+             clone=True, eps=1e-14):
+        if clone:
+            mps1 = self.clone_gmps()
+            mps1.eps = eps
+            eosp_ordering = mps1.EOSP_self(num_f, recalculate)
+            self.copy_properties(mps1)
+            return eosp_ordering
+        else:
+            self.eps = eps
+            return self.EOSP_self(num_f, recalculate)
+
+    def EOSP_average_OEEs(self, num_f=-1, recalculate=False,
+                          clone=True, eps=1e-14):
+        if (self.eosp_oee_av is not None) and (self.eosp_oee_av.numel() >= num_f):
+            return self.eosp_oee_av[:num_f]
+        else:
+            if clone:
+                mps1 = self.clone_gmps()
+                mps1.eps = eps
+                mps1.EOSP_self(num_f, recalculate)
+                self.copy_properties(mps1)
+                return mps1.eosp_oee_av
+            else:
+                self.eps = eps
+                self.EOSP_self(num_f, recalculate)
+                return self.eosp_oee_av
+
+    def EOSP_fast_eps(self, num_f=-1, oee_eps=1e-6, eps=1e-14):
+        # !!!! 未调试 !!!!
+        self.eps = eps  # avoid NAN in OEE
+        pos_eosp = list()
+        if num_f == -1:
+            num_f = len(self.tensors)
+        pos_rec = list(range(len(self.tensors)))
+        pos_large_oee = pos_rec
+        qs_num = 0.0
+        for n in range(num_f):
+            bf.print_progress_bar(n, num_f)
+            if len(pos_rec) == 1:
+                pos_eosp.append(pos_rec[0])
+            else:
+                self.center_orthogonalization(
+                    c=0, way='qr', normalize=True)
+                OEE = self.entanglement_ent_onsite(which=pos_large_oee, print_info=False)
+                if len(pos_large_oee) == 0:
+                    order1 = tc.argsort(OEE, descending=True)
+                    pos1 = [pos_rec[x] for x in order1[:(num_f-len(pos_eosp))]]
+                    pos_eosp = pos_eosp + pos1
+                    return pos_eosp, qs_num
+                qs_num += OEE.sum().item() / OEE.numel() / np.log(
+                    self.tensors[0].shape[1])
+                p_max = OEE.argmax()
+                pos_eosp.append(pos_rec.pop(p_max))
+                rho = self.one_body_RDM(p_max)
+                lm, u = tc.linalg.eigh(rho)
+                u = u[:, lm.argmax()]
+                self.project_multi_qubits(
+                    [p_max], u.reshape(-1, 1))
+                pos_large_oee = [x for x in range(OEE.numel()) if OEE[x] > oee_eps]
+                pos_large_oee.pop(p_max)
+        pos_eosp = tc.tensor(
+            pos_eosp, dtype=tc.int64, device=self.device)
+        return pos_eosp, qs_num
+
+    def EOSP_self(self, num_f=-1, recalculate=False):
+        pos_eosp = list()
+        length = len(self.tensors)
+        if num_f == -1:
+            num_f = len(self.tensors)
+        if recalculate or (self.eosp_ordering is None) \
+                or self.eosp_ordering.numel() != len(self.tensors):
+            pos_rec = list(range(len(self.tensors)))
+            qs_num = 0.0
+            eosp_oee_av = list()
+            for n in range(num_f):
+                bf.print_progress_bar(n, num_f)
+                if len(pos_rec) <= 1:
+                    pos_eosp.append(pos_rec[0])
+                else:
+                    self.center_orthogonalization(
+                        c=0, way='qr', normalize=True)
+                    OEE = self.entanglement_ent_onsite(
+                        print_info=False)
+                    eosp_oee_av.append(
+                        OEE.sum().item() / OEE.numel())
+                    qs_num += eosp_oee_av[-1] / np.log(
+                        self.tensors[0].shape[1])
+                    p_max = OEE.argmax()
+                    pos_eosp.append(pos_rec.pop(p_max))
+                    rho = self.one_body_RDM(p_max)
+                    lm, u = tc.linalg.eigh(rho)
+                    u = u[:, lm.argmax()]
+                    self.project_multi_qubits(
+                        [p_max], u.reshape(-1, 1))
+            pos_eosp = tc.tensor(
+                pos_eosp, dtype=tc.int64, device=self.device)
+            eosp_oee_av = tc.tensor(
+                eosp_oee_av, dtype=self.dtype, device=self.device)
+            if pos_eosp.numel() == length:
+                self.eosp_ordering = pos_eosp
+                self.eosp_oee_av = eosp_oee_av
+                self.qs_number = qs_num
+        else:
+            print('Use existing EOSP ordering...')
+            pos_eosp = self.eosp_ordering[:num_f]
+        return pos_eosp
+
+    def entanglement_ent_onsite(self, which=None, eps=None,
+                                recalculate=False, print_info=True):
+        if which in [None, 'all'] and (not recalculate):
+            if (self.oee is not None) and (self.oee.numel() == len(self.tensors)):
+                if print_info:
+                    print('Return existing OEE data...')
+                return self.oee.to(device=self.device, dtype=self.dtype)
+        if type(which) not in [tc.Tensor, np.ndarray, list, tuple] \
+                and (which in [None, 'all']):
             which = list(range(len(self.tensors)))
         if eps is None:
             eps = self.eps
         if type(which) is int:
             which = [which]
-        ent = tc.zeros(len(which), device=self.device, dtype=self.dtype)
-        for n, nc in enumerate(which):
+        rho = list()
+        for nc in which:
             self.center_orthogonalization(nc)
-            rho = self.one_body_RDM(self.center)
-            lm = tc.linalg.eigvalsh(rho)
-            lm /= lm.sum()
-            ent[n] = -tc.inner(lm, tc.log(lm+eps))
+            rho.append(self.one_body_RDM(self.center).to('cpu').numpy())
+        rho = np.stack(rho)
+        lms = np.linalg.eigvalsh(rho)
+        lms = tc.from_numpy(lms).to(device=self.device, dtype=self.dtype)
+        lms = tc.einsum('na,n->na', lms, 1/lms.sum(dim=1))
+        lms[lms < eps] = eps
+        ent = tc.einsum('na,na->n', -lms, tc.log(lms))
+        if ent.numel() == len(self.tensors):
+            self.oee = ent
         return ent
 
     def find_max_virtual_dim(self):
@@ -302,13 +453,14 @@ class MPS_basic:
         else:
             self.tensors[nt] = self.tensors[nt][:, state, :]
         if len(self.tensors) > 1:
-            if nt == 0:
+            if nt == 0:  # contract to 1st tensor
                 self.tensors[1] = tc.tensordot(self.tensors[0], self.tensors[1], [[1], [0]])
-            else:
+            else:  # contract to the left tensor
                 self.tensors[nt-1] = tc.tensordot(self.tensors[nt-1], self.tensors[nt], [[-1], [0]])
             self.tensors.pop(nt)
 
     def project_multi_qubits(self, pos, states):
+        # Not central-orthogonalized; not normalized
         assert type(pos) is list
         states_vecs = (type(states) is tc.Tensor) and (states.ndimension() == 2)
         for n, p in enumerate(pos):
@@ -330,6 +482,44 @@ class MPS_basic:
             self.tensors.pop(pos[0])
         self.center = -1
 
+    def properties(self, prop=None, which_prop=None):
+        if prop is None:
+            prop = dict()
+        if which_prop is None:
+            which_prop = mps_propertie_keys
+        elif type(which_prop) is str:
+            which_prop = [which_prop]
+        for x in which_prop:
+            if getattr(self, x) is not None:
+                prop[x] = getattr(self, x)
+        return prop
+
+    def Q_sparsity(self, recalculate=False, clone=True, eps=1e-14):
+        if recalculate or (self.qs_number is None):
+            if clone:
+                mps1 = self.clone_gmps()
+                mps1.eps = eps
+                self.eosp_ordering = mps1.EOSP_self(
+                    num_f=-1, recalculate=recalculate)
+                self.qs_number = mps1.qs_number
+                return self.qs_number
+            else:
+                self.eps = eps
+                self.EOSP_self(num_f=-1, recalculate=recalculate)
+                return self.qs_number
+        else:
+            return self.qs_number
+
+    def save(self, path=None, file=None):
+        bf.save(path, file, [self.tensors, self.para, self.properties()],
+                ['tensors', 'paraMPS', 'properties'])
+
+    def save_properties(self, path=None, file=None, which_prop=None):
+        pathfile = bf.join_path(path, file)
+        prop = bf.load(pathfile, 'properties')
+        prop = self.properties(prop, which_prop)
+        bf.save(pathfile, None, data=[prop], names=['properties'], append=True)
+
     def tensors2ParameterList(self, eps=1.0):
         tensors = nn.ParameterList()
         for x in self.tensors:
@@ -349,6 +539,12 @@ class MPS_basic:
         self.para['device'] = self.device
         self.para['dtype'] = self.dtype
         self.para['length'] = self.length
+
+    def update_properties(self, properties):
+        if type(properties) is dict:
+            for x in mps_propertie_keys:
+                if x in properties:
+                    setattr(self, x, properties[x])
 
 
 class ResMPS_basic(nn.Module, MPS_basic):
@@ -540,8 +736,9 @@ class activated_ResMPS(ResMPS_basic):
 
 class generative_MPS(MPS_basic):
 
-    def __init__(self, tensors=None, para=None):
-        super(generative_MPS, self).__init__(tensors=tensors, para=para)
+    def __init__(self, tensors=None, para=None, properties=None):
+        super(generative_MPS, self).__init__(
+            tensors=tensors, para=para, properties=properties)
         self.samples_v = None
         self.vecsL = None
         self.vecsR = None
@@ -794,6 +991,14 @@ def check_center_orthogonality(tensors, center, prt=False):
         print('Average error = %g' % (err_av / (len(tensors) - 1)))
         print('=' * 35)
     return err
+
+
+def copy_mps_properties(mps_to, mps_from, properties=None):
+    if properties is None:
+        properties = mps_propertie_keys
+    for x in properties:
+        setattr(mps_to, x, getattr(mps_from, x))
+    return mps_to
 
 
 def evaluate_nll(mps, samples=None, average=False):

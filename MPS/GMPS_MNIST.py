@@ -16,7 +16,7 @@ para = {
 paraMPS = {
         'length': 784,
         'd': 2,
-        'chi': 6
+        'chi': 64
     }
 
 train_dataset, test_dataset = load_mnist(
@@ -32,6 +32,6 @@ nll_test = mps.evaluate_nll(test_img, average=True)
 
 
 plot(tc.arange(len(info['nll'])), info['nll'],
-     tc.ones(len(info['nll']))*nll_test,
+     tc.ones(len(info['nll']))*nll_test.item(),
      marker=['s', ''], xlabel='epoch', ylabel='NLL',
      legend=['train', 'test'], linestyle=['-', '--'])

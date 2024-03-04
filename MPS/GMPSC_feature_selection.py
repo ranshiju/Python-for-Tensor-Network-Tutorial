@@ -110,9 +110,9 @@ for num in [15, 20, 50, 100, 200, 300, 400, 500, 600]:
     acc_test = acc_saved_gmpsc_by_file_names(
         tc.cat(test_tmp, dim=0), tc.cat(test_lbs, dim=0),
         gmps_files=gmps_names, classes=list(range(10)))
-    bf.fprint('With GMPS trained by selected features, '
-              'train & test acc (%i features) = %g, %g' % (
-        num, acc_train.item(), acc_test.item()), file='results.log')
+    bf.fprint('Train & test acc (%i features) = %g, %g' % (
+        num, acc_train.item(), acc_test.item()), 
+              file='results.log')
 
 
 
