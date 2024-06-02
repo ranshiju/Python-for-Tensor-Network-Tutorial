@@ -20,9 +20,13 @@ def state_ghz(n_qubit):
 class TensorPureState:
 
     def __init__(self, tensor=None, nq=None,
-                 device=None, dtype=tc.float64):
+                 device=None, dtype=None):
         self.rand_seed = None
+        if (device is None) and (type(tensor) is tc.Tensor):
+            device = tensor.device
         self.device = bf.choose_device(device)
+        if (dtype is None) and (type(tensor) is tc.Tensor):
+            dtype = tensor.dtype
         self.dtype = dtype
         if nq is None:
             nq = 3
