@@ -76,6 +76,15 @@ class TensorPureState:
         psi = self.tensor.permute(pos+ind).reshape(2**len(pos), -1)
         return tc.linalg.svdvals(psi)
 
+    def bipartite_ent_entropy_all(self, eps=1e-14):
+        ent = tc.zeros(self.tensor.ndimension()-1,
+                       device=self.device, dtype=self.dtype)
+        for n in range(1, self.tensor.ndimension()):
+            tensor = self.tensor.reshape(np.prod(self.tensor.shape[:n]), -1)
+            lm = tc.linalg.svdvals(tensor) ** 2
+            ent[n-1] = -lm.inner(tc.log(lm+eps))
+        return ent
+
     def onsite_ent_entropy(self, eps=1e-14):
         OEE = tc.zeros(self.tensor.ndimension(), device=self.device, dtype=self.dtype)
         for n in range(self.tensor.ndimension()):
@@ -97,6 +106,18 @@ class TensorPureState:
         else:
             dim_h = operator.shape[0]
         return tc.trace(rho.mm(operator.reshape(dim_h, dim_h)))
+
+    def observe_bond_energies(self, hamilt, pos):
+        eb = tc.zeros(len(pos), device=self.device, dtype=self.dtype)
+        if type(hamilt) is np.ndarray:
+            hamilt = tc.tensor(hamilt).to(device=self.device, dtype=self.dtype)
+        if type(hamilt) is tc.Tensor:
+            for p in range(len(pos)):
+                eb[p] = self.observation(hamilt, pos[p])
+        else:
+            for p in range(len(pos)):
+                eb[p] = self.observation(hamilt[p], pos[p])
+        return eb
 
     def project(self, v, pos, update_state=True, return_tensor=False):
         psi1 = tc.tensordot(self.tensor, v, [[pos], [0]])

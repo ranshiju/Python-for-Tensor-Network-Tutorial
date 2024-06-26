@@ -79,7 +79,8 @@ def find_indexes_value_in_list(x, value):
 
 def fprint(content, file=None, print_screen=True, append=True):
     if file is None:
-        print(content)
+        if print_screen:
+            print(content)
     else:
         if append:
             way = 'ab'

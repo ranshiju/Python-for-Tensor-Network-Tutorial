@@ -294,6 +294,9 @@ def load_mnist(which='mnist', dataset_path=None, test=True, process=None):
 
 def make_dataloader(dataset, batch_size=None, shuffle=False):
     from torch.utils.data import DataLoader
+    if type(dataset) in [list, tuple]:
+        # dataset = [samples, labels]
+        dataset = TensorDataset(dataset[0], dataset[1])
     if batch_size is None:
         batch_size = dataset.data.shape[0]
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)

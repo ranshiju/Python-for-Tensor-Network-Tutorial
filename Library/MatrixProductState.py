@@ -51,35 +51,23 @@ class MPS_basic:
         else:
             self.para = dict(para0, **para)
 
-    def add_mps_vecs(self, vecs, factors=1.0):
-        # MPS is with open boundary condition
-        # vecs.shape = (num_samples, d, num_qubits)
-        assert self.para['boundary'] == 'open'
-        tensors1 = from_vecs_to_mps(vecs, factors=factors)
-        s = self.tensors[0].shape
-        x1 = tc.zeros((1, s[1], s[2] + tensors1[0].shape[-1]),
-                      dtype=self.tensors[0].dtype,
-                      device=self.tensors[0].device)
-        x1[0, :, :s[2]] = self.tensors[0]
-        x1[0, :, s[2]:] = tensors1[0][0, :, :]
-        self.tensors[0] = x1
-        for n in range(1, len(self.tensors) - 1):
-            s = self.tensors[n].shape
-            x1 = tc.zeros((s[0] + tensors1[n].shape[0], s[1],
-                           s[2] + tensors1[n].shape[2]),
-                          dtype=self.tensors[n].dtype,
-                          device=self.tensors[n].device)
-            x1[:s[0], :, :s[2]] = self.tensors[n]
-            x1[s[0]:, :, s[2]:] = tensors1[n]
-            self.tensors[n] = x1
-        s = self.tensors[-1].shape
-        x1 = tc.zeros((s[0] + tensors1[-1].shape[0], s[1], 1),
-                      dtype=self.tensors[-1].dtype,
-                      device=self.tensors[-1].device)
-        x1[:s[0], :, :1] = self.tensors[-1]
-        x1[s[0]:, :, :1] = tensors1[-1]
-        self.tensors[-1] = x1
-        self.center = -1
+    def act_single_gate(self, gate, pos, unitary_gate=False):
+        self.tensors[pos] = tc.einsum('ps,asb->apb', gate, self.tensors[pos])
+        if not unitary_gate:
+            self.center = -1
+
+    def bipartite_entanglement(self, nt, normalize=False):
+        # 从第nt个张量右边断开，计算纠缠
+        # 计算过程中，会对MPS进行规范变换
+        if self.center <= nt:
+            self.center_orthogonalization(nt, 'qr', dc=-1, normalize=normalize)
+            lm = tc.linalg.svdvals(self.tensors[nt].reshape(
+                -1, self.tensors[nt].shape[-1]))
+        else:
+            self.center_orthogonalization(nt + 1, 'qr', dc=-1, normalize=normalize)
+            lm = tc.linalg.svdvals(self.tensors[nt+1].reshape(
+                self.tensors[nt+1].shape[0], -1))
+        return lm
 
     def copy_properties(self, mps, properties=None):
         if properties is None:
@@ -107,19 +95,6 @@ class MPS_basic:
 
     def clone_tensors(self):
         self.tensors = [x.clone() for x in self.tensors]
-
-    def bipartite_entanglement(self, nt, normalize=False):
-        # 从第nt个张量右边断开，计算纠缠
-        # 计算过程中，会对MPS进行规范变换
-        if self.center <= nt:
-            self.center_orthogonalization(nt, 'qr', dc=-1, normalize=normalize)
-            lm = tc.linalg.svdvals(self.tensors[nt].reshape(
-                -1, self.tensors[nt].shape[-1]))
-        else:
-            self.center_orthogonalization(nt + 1, 'qr', dc=-1, normalize=normalize)
-            lm = tc.linalg.svdvals(self.tensors[nt+1].reshape(
-                self.tensors[nt+1].shape[0], -1))
-        return lm
 
     def center_orthogonalization(self, c, way='svd', dc=-1, normalize=False):
         if c == -1:
@@ -534,6 +509,22 @@ class MPS_basic:
         tensors = [x.to(device=self.device, dtype=self.dtype) for x in self.tensors]
         self.tensors = tensors
 
+    def two_body_RDM(self, pos):
+        # 注：该函数会改变MPS的中心位置
+        pos = sorted(pos)
+        self.center_orthogonalization(c=pos[0], way='qr')
+        self.normalize_central_tensor()
+        v = tc.einsum('apb,aqd->pqbd',
+                      self.tensors[pos[0]].conj(), self.tensors[pos[0]])
+        for n in range(pos[0]+1, pos[1], 1):
+            v = tc.einsum('pqac,asb,csd->pqbd',
+                          v, self.tensors[n].conj(), self.tensors[n])
+        rho = tc.einsum('pqac,asb,ckb->psqk',
+                        v, self.tensors[pos[1]].conj(), self.tensors[pos[1]])
+        s = rho.shape
+        rho = rho.reshape(s[0]*s[1], -1)
+        return rho
+
     def update_attributes_para(self):
         self.length = len(self.tensors)
         self.para['device'] = self.device
@@ -746,6 +737,36 @@ class generative_MPS(MPS_basic):
         self.para = copy.deepcopy(para)
         self.combine_default_para()
         self.eps = self.para['eps']
+
+    def add_mps_vecs(self, vecs, factors=1.0):
+        # MPS is with open boundary condition
+        # vecs.shape = (num_samples, d, num_qubits)
+        assert self.para['boundary'] == 'open'
+        tensors1 = from_vecs_to_mps(vecs, factors=factors)
+        s = self.tensors[0].shape
+        x1 = tc.zeros((1, s[1], s[2] + tensors1[0].shape[-1]),
+                      dtype=self.tensors[0].dtype,
+                      device=self.tensors[0].device)
+        x1[0, :, :s[2]] = self.tensors[0]
+        x1[0, :, s[2]:] = tensors1[0][0, :, :]
+        self.tensors[0] = x1
+        for n in range(1, len(self.tensors) - 1):
+            s = self.tensors[n].shape
+            x1 = tc.zeros((s[0] + tensors1[n].shape[0], s[1],
+                           s[2] + tensors1[n].shape[2]),
+                          dtype=self.tensors[n].dtype,
+                          device=self.tensors[n].device)
+            x1[:s[0], :, :s[2]] = self.tensors[n]
+            x1[s[0]:, :, s[2]:] = tensors1[n]
+            self.tensors[n] = x1
+        s = self.tensors[-1].shape
+        x1 = tc.zeros((s[0] + tensors1[-1].shape[0], s[1], 1),
+                      dtype=self.tensors[-1].dtype,
+                      device=self.tensors[-1].device)
+        x1[:s[0], :, :1] = self.tensors[-1]
+        x1[s[0]:, :, :1] = tensors1[-1]
+        self.tensors[-1] = x1
+        self.center = -1
 
     def clear_memory(self):
         self.samples_v = None
@@ -960,6 +981,45 @@ class generative_MPS(MPS_basic):
         pred = tc.argmin(nll, dim=1)
         num_c = tc.sum(pred == labels.to(device=nll.device))
         return num_c.to(dtype=tc.float64) / labels.numel()
+
+
+class MPS_tebd(MPS_basic):
+
+    def __init__(self, tensors=None, para=None, properties=None):
+        super(MPS_tebd, self).__init__(
+            tensors=tensors, para=para, properties=properties)
+
+    def evolve_gate_2body_LR(self, gl, gr, pos):
+        """
+        shape of gl/gr: (d, D, d)
+           0        0
+           |        |
+          gl - 1 - gr
+          |        |
+          2        2
+        """
+        assert pos[0] < pos[1]
+        s = self.tensors[pos[0]].shape
+        self.tensors[pos[0]] = tc.einsum('aqb,psq->apsb', self.tensors[pos[0]], gl)
+        self.tensors[pos[0]] = self.tensors[pos[0]].reshape(s[0], gl.shape[0], gl.shape[1]*s[2])
+        s = self.tensors[pos[1]].shape
+        self.tensors[pos[1]] = tc.einsum('aqb,psq->sapb', self.tensors[pos[1]], gr)
+        self.tensors[pos[1]] = self.tensors[pos[1]].reshape(gr.shape[1]*s[0], gr.shape[0], s[2])
+        eye = tc.eye(gl.shape[1], device=gl.device, dtype=gl.dtype).flatten()
+        for n in range(pos[0]+1, pos[1], 1):
+            s = self.tensors[n].shape
+            tensor = tc.outer(self.tensors[n].flatten(), eye).reshape(
+                s + (gl.shape[1], gl.shape[1]))
+            self.tensors[n] = tensor.permute(3, 0, 1, 4, 2).reshape(
+                gl.shape[1]*s[0], s[1], gl.shape[1]*s[2])
+        self.center = -1
+
+    def calculate_local_energies(self, hamilts, pos):
+        eb = list()
+        for p in range(len(pos)):
+            rho = self.two_body_RDM(pos[p])
+            eb.append(tc.einsum('ab,ba->', hamilts[p].reshape(rho.shape), rho))
+        return tc.tensor(eb, device=self.device, dtype=self.dtype)
 
 
 def check_center_orthogonality(tensors, center, prt=False):
