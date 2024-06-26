@@ -5,10 +5,11 @@ import numpy as np
 import Algorithms.wheels_gmps as wf
 from torch import nn, optim
 from Library import DataFun as df
+from Library import Hamiltonians as hm
 from Library.BasicFun import print_dict, fprint, choose_device, \
-    save, load, print_progress_bar
+    save, load
 from Library.MatrixProductState import \
-    generative_MPS, ResMPS_basic, activated_ResMPS
+    MPS_tebd, generative_MPS, ResMPS_basic, activated_ResMPS
 
 
 def ESOP_GMPS(mps, num_f=-1, recalculate=False, clone=True):
@@ -548,4 +549,177 @@ def generate_sample_by_gmps(
     return sample
 
 
+def tebd(hamilts, pos, mps_tensors=None, para=None,
+         paraMPS=None, output=None):
+    """
+    :param hamilts: 局域哈密顿量，该程序仅包含二体相互作用
+                   （单体项可包含到二体项中）
+    :param pos: 局域哈密顿量对应的位置；使用者可通过调整pos
+                演化顺序获得最佳效率
+    :param mps_tensors: 初始矩阵乘积态（None将随机初始化）
+    :param para: TEBD算法参数
+    :param paraMPS: MPS参数
+    :param output: return的内容
+    """
+    import Algorithms.wheels_tebd as wh
+    wh.check_hamilts_and_pos(hamilts, pos)
+    for p in pos:
+        assert len(p) == 2
+    para0 = {
+        'tau': 0.1,  # 初始Trotter切片长度
+        'time_it': 1000,  # 演化次数
+        'time_ob': 20,  # 观测量计算间隔
+        'e0_eps': 1e-3,  # 基态能收敛判据
+        'tau_min': 1e-4,  # 终止循环tau判据
+        't_tau_min': 5,  # 每个tau最小迭代次数
+        'device': choose_device(),
+        'dtype': tc.float64,
+        'save_file': './MPS_tebd.data',
+        'print': True,  # 是否打印
+        'log_file': None  # 打印到文件
+    }
+    if para is None:
+        para = dict()
+    para = dict(para0, **para)
 
+    paraMPS0 = {
+        'length': 6,  # 总自旋数
+        'd': 2,  # 物理维数
+        'chi': 12  # 虚拟截断维数
+    }
+    if paraMPS is None:
+        paraMPS = dict()
+    paraMPS = dict(paraMPS0, **paraMPS)
+    paraMPS['device'] = para['device']
+    paraMPS['dtype'] = para['dtype']
+
+    if type(hamilts) is tc.Tensor:
+        hamilts = hamilts.to(
+            device=para['device'], dtype=para['dtype'])
+        paraMPS['d'] = hamilts.shape[0]
+    else:
+        hamilts = [ham.to(device=para['device'],
+                          dtype=para['dtype'])
+                   for ham in hamilts]
+        paraMPS['d'] = hamilts[0].shape[0]
+
+    mps = MPS_tebd(tensors=mps_tensors, para=paraMPS)
+    mps.center_orthogonalization(
+        pos[0][-1], way='svd', dc=paraMPS['chi'])
+    mps.normalize_central_tensor()
+
+    tau = para['tau']
+    gates = wh.hamilts2gates(hamilts, tau)
+    beta = 0.0
+    t_tau = 0
+    eb = tc.zeros((len(pos), ),
+                  device=para['device'], dtype=para['dtype'])
+    gr = tc.eye(paraMPS['d']**2, device=para['device'],
+                dtype=para['dtype']).reshape(
+        [paraMPS['d']]*4).permute(0, 2, 3, 1).reshape(
+        paraMPS['d'], paraMPS['d']**2, paraMPS['d'])
+    for t in range(para['time_it']):
+        for p in range(len(pos)):
+            if abs(mps.center-pos[p][0]) < abs(
+                    mps.center-pos[p][1]):
+                mps.center_orthogonalization(pos[p][0])
+            else:
+                mps.center_orthogonalization(pos[p][1])
+
+            if type(hamilts) is tc.Tensor:
+                gate = gates
+            else:
+                gate = gates[p]
+            gl = gate.reshape(2, 2, 2, 2).permute(
+                0, 1, 3, 2).reshape(
+                paraMPS['d'], paraMPS['d']**2, paraMPS['d'])
+            mps.evolve_gate_2body_LR(gl, gr, pos[p])
+
+            if p == (len(pos)-1):
+                pos_next = pos[0]
+            else:
+                pos_next = pos[p+1]
+            direction = wh.find_optimal_new_center(
+                pos[p][0], pos[p][1], pos_next[0], pos_next[1])
+            if direction == 'lr':
+                mps.orthogonalize_n1_n2(
+                    pos[p][1], pos[p][0], way='qr',
+                    dc=-1, normalize=False)
+                mps.orthogonalize_n1_n2(
+                    pos[p][0], pos[p][1], way='svd',
+                    dc=paraMPS['chi'], normalize=False)
+                mps.center = pos[p][1]
+            else:
+                mps.orthogonalize_n1_n2(
+                    pos[p][0], pos[p][1], way='qr',
+                    dc=-1, normalize=False)
+                mps.orthogonalize_n1_n2(
+                    pos[p][1], pos[p][0], way='svd',
+                    dc=paraMPS['chi'], normalize=False)
+                mps.center = pos[p][0]
+            mps.normalize_central_tensor()
+        beta += tau
+        t_tau += 1
+
+        if ((t_tau > para['t_tau_min']) and (
+                (t+1) % para['time_ob'] == 0)) or (
+                t == (para['time_it']-1)):
+            eb1 = mps.calculate_local_energies(hamilts, pos)
+            fprint('For beta = %g, average E = %g' % (
+                beta, eb1.sum()/len(mps.tensors)),
+                   file=para['log_file'],
+                   print_screen=para['print'])
+            deb = (eb1 - eb).abs().sum() / eb.numel()
+            eb = eb1
+            if ((deb < para['e0_eps']) or
+                    (t == (para['time_it']-1))):
+                mps.save(file=para['save_file'])
+                tau *= 0.5
+                t_tau = 0
+                if ((tau < para['tau_min']) or
+                        (t == (para['time_it']-1))):
+                    fprint('E converged. Break iteration.',
+                           file=para['log_file'],
+                           print_screen=para['print'])
+                    break
+                gates = wh.hamilts2gates(hamilts, tau)
+                fprint('Reduce tau to %g...' % tau,
+                       file=para['log_file'],
+                       print_screen=para['print'])
+    if output is None:
+        return None
+    out = dict()
+    if 'eb' in output:
+        out['eb'] = eb
+    return out
+
+
+def tebd_spin_chain(mps_tensors=None, para=None,
+                    paraMPS=None, output=None):
+    para0 = {
+        'jxy': 1,
+        'jz': 1,
+        'hx': 0,
+        'hz': 0,
+        'bound_cond': 'open'  # open or periodic
+    }
+    if para is None:
+        para = dict()
+    para = dict(para0, **para)
+    paraMPS0 = {
+        'd': 2,
+        'length': 6
+    }
+    if paraMPS is None:
+        paraMPS = dict()
+    paraMPS = dict(paraMPS0, **paraMPS)
+    if mps_tensors is not None:
+        paraMPS['length'] = len(mps_tensors)
+    hamilts = hm.spin_chain_NN_hamilts(
+        para['jxy'], para['jxy'], para['jz'], para['hx'],
+        0, para['hz'], paraMPS['length'],
+        paraMPS['d'], para['bound_cond'])
+    pos = hm.pos_chain_NN(
+        paraMPS['length'], para['bound_cond'])
+    return tebd(hamilts, pos, mps_tensors,
+                para, paraMPS, output)
