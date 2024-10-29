@@ -255,7 +255,7 @@ def GMPS_train_feature_selection(samples, tensors=None, para=None, paraMPS=None)
     para0['lr'] = 0.1  # learning rate
     para0['lr_decay'] = 0.9  # decaying of learning rate
     para0['sweepTime'] = 0  # sweep time
-    para0['sweepTimeNoData'] = 100  # sweep time with no saved data
+    para0['sweepTimeNoData'] = 100  # sweep time with no saved data_results
     para0['sweepTimeFS'] = 100  # sweep time after feature selection
 
     para0['isSave'] = True  # whether save MPS
@@ -574,7 +574,7 @@ def tebd(hamilts, pos, mps_tensors=None, para=None,
         't_tau_min': 5,  # 每个tau最小迭代次数
         'device': choose_device(),
         'dtype': tc.float64,
-        'save_file': './MPS_tebd.data',
+        'save_file': './MPS_tebd.data_results',
         'print': True,  # 是否打印
         'log_file': None  # 打印到文件
     }
@@ -715,7 +715,7 @@ def tebd_spin_chain(mps_tensors=None, para=None,
     paraMPS = dict(paraMPS0, **paraMPS)
     if mps_tensors is not None:
         paraMPS['length'] = len(mps_tensors)
-    hamilts = hm.spin_chain_NN_hamilts(
+    hamilts = hm.hamilts_spin_chain_NN(
         para['jxy'], para['jxy'], para['jz'], para['hx'],
         0, para['hz'], paraMPS['length'],
         paraMPS['d'], para['bound_cond'])

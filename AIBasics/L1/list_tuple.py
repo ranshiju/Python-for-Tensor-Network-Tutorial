@@ -4,18 +4,20 @@
 import numpy as np
 
 
-x = [4, 'haha', True, 1.3, np.sin]
+x = [4, 'haha', True, 1.3, np.sin, [1, 2, 3]]
 print(x)
 print(type(x))  # 打印类型
 print(len(x))  # 打印长度（包含几个元素）
 
 print(x[1])  # 打印列表中的第1号元素
-print(x[1:3])  # 打印列表中的第1到2号元素
+print(x[1:4])  # 打印列表中的第1到2号元素
 
 # 用+号拼接两个列表
 y = [2, 0]
 z = x + y
 print(z)
+x.append([2, 0])
+print(x)
 
 # numpy函数库可以同时计算列表中元素对应的数学函数值
 # 例：打印出从0到9所有整数的sin值

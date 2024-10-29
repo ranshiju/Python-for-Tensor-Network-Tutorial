@@ -1,3 +1,5 @@
+import os
+
 import torch as tc
 import numpy as np
 import copy
@@ -83,12 +85,48 @@ def ED_spin_chain(v0=None, k=1, para=None):
     if para is None:
         para = dict()
     para = dict(para0, **para)
-    hamilts = hm.spin_chain_NN_hamilts(
+    hamilts = hm.hamilts_spin_chain_NN(
         para['jx'], para['jy'], para['jz'], para['hx'],
         para['hy'], para['hz'], para['length'],
         2, para['bound_cond'])
     pos = hm.pos_chain_NN(
         para['length'], para['bound_cond'])
+    lm, v = ED_ground_state(hamilts, pos, v0=v0, k=k)
+    return lm, v, pos, para
+
+
+def ED_spin_lattice_NN_2D(v0=None, k=1, para=None):
+    para0 = {
+        'lattice': 'triangular',  # triangular, square, kagome
+        'size': (3, 3),
+        'jx': 1,
+        'jy': 1,
+        'jz': 1,
+        'hx': 0,
+        'hy': 0,
+        'hz': 0,
+        'bound_cond': 'open'  # open or periodic
+    }
+    if para is None:
+        para = dict()
+    para = dict(para0, **para)
+    if para['lattice'] == 'square':
+        pos = hm.pos_square_NN(para['size'], para['bound_cond'])
+    elif para['lattice'] == 'triangular':
+        pos = hm.pos_triangle_OBC(para['size'])
+        para['bound_cond'] = 'open'
+    elif para['lattice'] == 'kagome':
+        pos = hm.pos_triangle_OBC(para['size'])
+        para['bound_cond'] = 'open'
+    else:
+        pos = None
+        os.error('Lattice unconsidered ... ')
+    para['length'] = np.max(np.array(pos))+1
+
+    hamilts = hm.hamilts_kagome_NN_OBC(
+        para['jx'], para['jy'], para['jz'], para['hx'],
+        para['hy'], para['hz'], para['size'], 2)
+    pos = hm.pos_triangle_OBC(para['size'])
     lm, v = ED_ground_state(hamilts, pos, v0=v0, k=k)
     return lm, v, pos, para
 
@@ -111,6 +149,7 @@ def GS_ImagEvo_tensor(hamilt, pos, psi=None, para=None):
     if para is None:
         para = dict()
     para = dict(para0, **para)
+    para['length'] = np.max(np.array(pos)) + 1
 
     if psi is None:
         psi = TensorPureState(
