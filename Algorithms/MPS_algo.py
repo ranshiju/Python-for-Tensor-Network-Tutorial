@@ -714,12 +714,17 @@ def tebd_spin_chain(mps_tensors=None, para=None,
         paraMPS = dict()
     paraMPS = dict(paraMPS0, **paraMPS)
     if mps_tensors is not None:
-        paraMPS['length'] = len(mps_tensors)
-    hamilts = hm.hamilts_spin_chain_NN(
-        para['jxy'], para['jxy'], para['jz'], para['hx'],
-        0, para['hz'], paraMPS['length'],
-        paraMPS['d'], para['bound_cond'])
-    pos = hm.pos_chain_NN(
-        paraMPS['length'], para['bound_cond'])
-    return tebd(hamilts, pos, mps_tensors,
-                para, paraMPS, output)
+        paraMPS["length"] = len(mps_tensors)
+    hamilts = hm.spin_chain_NN_hamilts(
+        para["jxy"],
+        para["jxy"],
+        para["jz"],
+        para["hx"],
+        0,
+        para["hz"],
+        paraMPS["length"],
+        paraMPS["d"],
+        para["bound_cond"],
+    )
+    pos = hm.pos_chain_NN(paraMPS["length"], para["bound_cond"])
+    return tebd(hamilts, pos, mps_tensors, para, paraMPS, output)

@@ -85,12 +85,18 @@ def ED_spin_chain(v0=None, k=1, para=None):
     if para is None:
         para = dict()
     para = dict(para0, **para)
-    hamilts = hm.hamilts_spin_chain_NN(
-        para['jx'], para['jy'], para['jz'], para['hx'],
-        para['hy'], para['hz'], para['length'],
-        2, para['bound_cond'])
-    pos = hm.pos_chain_NN(
-        para['length'], para['bound_cond'])
+    hamilts = hm.spin_chain_NN_hamilts(
+        para["jx"],
+        para["jy"],
+        para["jz"],
+        para["hx"],
+        para["hy"],
+        para["hz"],
+        para["length"],
+        2,
+        para["bound_cond"],
+    )
+    pos = hm.pos_chain_NN(para["length"], para["bound_cond"])
     lm, v = ED_ground_state(hamilts, pos, v0=v0, k=k)
     return lm, v, pos, para
 
