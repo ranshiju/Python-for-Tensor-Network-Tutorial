@@ -285,8 +285,8 @@ def rotate_pauli(theta, direction):
 
 def series_sin_cos(x, coeff_sin, coeff_cos, k_step=0.02):
     y = tc.ones(x.numel(), device=x.device, dtype=x.dtype) * coeff_cos[0]
-    coeff_sin, coeff_cos = coeff_sin.to(device=x.device, dtype=x.dtype), \
-                           coeff_cos.to(device=x.device, dtype=x.dtype)
+    coeff_sin, coeff_cos = coeff_sin.to(device=x.device), \
+                           coeff_cos.to(device=x.device)
     for n in range(1, len(coeff_sin)):
         y = y + tc.sin(x * n * k_step) * coeff_sin[n]
     for n in range(1, len(coeff_cos)):
