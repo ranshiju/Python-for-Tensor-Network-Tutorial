@@ -62,7 +62,7 @@ def metric_euclidean(samples, samples_ref, p=2):
 
 def metric_matrix_neg_log_cos_sin(samples, theta=np.pi/2-1e-10):
     samples = samples.reshape(samples.shape[0], -1)
-    metric = tc.ones((samples.shape[0], samples.shape[0]),
+    metric = tc.zeros((samples.shape[0], samples.shape[0]),
                      device=samples.device, dtype=samples.dtype)
     for n in range(samples.shape[0]-1):
         tmp = samples[n, :].repeat(
