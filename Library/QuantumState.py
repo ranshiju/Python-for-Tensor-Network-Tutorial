@@ -134,7 +134,7 @@ class TensorPureState:
         if type(pos) is int:
             ind = list(range(self.tensor.ndimension()))
             ind.remove(pos)
-            return tc.tensordot(self.tensor.conj(), self.tensor, (ind, ind))
+            return tc.tensordot(self.tensor.conj(), self.tensor, (ind, ind)).T
         else:
             ind = list(range(self.tensor.ndimension()))
             dim = 1
