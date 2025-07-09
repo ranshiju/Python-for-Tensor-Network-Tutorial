@@ -330,8 +330,8 @@ def preprocess_image(image, preprocess_means):
 
 def rescale_max_min_simple(samples, maximum=1, minimum=0):
     s = samples.shape
-    samples_ = samples - samples.min()
-    samples_ = samples_ / samples_.max()
+    samples_ = samples - samples.min(dim=0, keepdim=True)[0]
+    samples_ = samples_ / samples_.max(dim=0, keepdim=True)[0]
     samples_ = samples_ * (maximum - minimum) + minimum
     return samples_.reshape(s)
 
